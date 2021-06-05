@@ -1,0 +1,73 @@
+---
+
+layout: post
+title: Quick Web performance test script
+date: "2013-02-10"
+
+---
+
+
+<h4>Preface</h4>
+<p>I was interested in testing out my new homepage server's performance in rather simple terms. I thought bombarding a single URL with Apache Benchmark would distort the results too much, and I also didn't want to load the resources outside my control (e.g. Google Analytics). I made a simple BASH script that loops indefinitely and does a wget call that fetches all the resources and links on my homepage recursively and displays the time it took to do that for each iteration.</p>
+<h4>Code</h4>
+<p>This simple shell script should work for on most platforms as long as you have "date" that supports "+%s.%N" -format, "wget" and "bc".</p>
+<p><b>Update:</b> The previous version was actually broken and rather shit. Now here's a better one. First of all, the previous one actually failed to recursively fetch all of the pages. Also, now all URLs are processed in parallel to reduce the time it takes to warm up multiple pages.</p>
+
+{{< highlight bash >}}
+#!/usr/bin/env bash
+
+# URLs to warm up
+urls=$(cat "${HOME}/warmup_urls.txt")
+
+# Temp path for storing files fetched during warmup
+temp_path="/tmp/warmup.sh/"
+
+# Command to warm them up with
+warmup="wget -rp -nv -q"
+# If you want a slight delay between page loads to reduce load
+#warmup="wget -rp -nv -q -w 1"
+
+# ----- LOGIC ----- #
+
+# Function to warm up a single URL
+function warmup_url() {
+        url=${1}
+
+        echo "Warming up ${url}..."
+
+        # Build the full command to warm it up
+        cmd="${warmup} ${url}"
+
+        # Run the command and time it
+        start=$(date +%s.%N)
+        ${cmd}
+        end=$(date +%s.%N)
+
+        elapsed=$(echo "${end}-${start}" | bc)
+
+        echo "${url} warmed up in ${elapsed} seconds"
+}
+
+
+# Make sure the temp path exists and go there
+mkdir -p ${temp_path}
+cd ${temp_path}
+
+# Loop through the URLs and warm them up in parallel
+pids=""
+for url in ${urls}; do
+        warmup_url $url &
+        # Save background process PID
+        pids="${pids} $!"
+done
+
+# Wait for the background processes to complete
+wait ${pids}
+
+# Get out of the temp path and remove it
+cd - > /dev/null
+rm -rf ${temp_path}
+{{< /highlight >}}
+
+<p>Put the code in some file, a list of URLs in the path specified in the urls= -line, and run it with: ./somefile.sh</p>
+

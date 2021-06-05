@@ -1,0 +1,294 @@
+---
+layout: post
+title: Python code quality monitoring - pyquality
+date: "2013-07-23"
+---
+
+<h4>What is this?</h4>
+<p>Python has excellent coding standards that everyone should follow (PEP-8) and excellent tool to check for standards-compliancy (pep8). There's also a good tool for checking various errors (e.g. unused imports) called pyflakes.</p>
+<p>Running these tools manually can easily become too much of a chore, and mass running them after doing a bunch of changes can end up with a lot of issues to be fixed at once making it a chore to fix all the little issues.</p>
+<p>To make following PEP-8 and keeping the code clean fairly effortless, I made a tool to monitor code quality in "real-time". It checks for changes (md5sum by default) once a second, if new files or changed files are detected, it immediately runs both pep8 and pyflakes on the file and clearly highlights any errors discovered.</p>
+
+<h4>pyquality</h4>
+<p>Put the contents below to a file called "pyquality" and place that file either in your local bin folder (if you know what that is), /usr/local/bin or /usr/bin. Don't forget to run "chmod +x pyquality" to add execution permissions for it.</p>
+{{< highlight bash >}}
+#!/usr/bin/env bash
+#
+# pyquality - Tool to monitor python code quality
+#
+# Makes sure you follow PEP-8, and analyzes programs for various errors,
+# with the help of pep8 and pyflakes.
+#
+# Run "pip install pep8 pyflakes" before trying to use this.
+#
+#
+# Copyright (C) 2013  Janne Enberg <> http://lietu.net/
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# For the full license text go to http://www.gnu.org/licenses/gpl-2.0.html 
+# Or write to the Free Software Foundation, Inc., 51 Franklin Street, 
+# Fifth Floor, Boston, MA  02110-1301, USA.
+#
+
+#
+# Configuration (probably no need to touch this)
+#
+
+PEP8=$(which pep8)               # Path to pep8
+PYFLAKES=$(which pyflakes)       # Path to pyflakes
+FIND=$(which find)               # Path to find
+
+HASH=$(which md5sum)             # How to calculate file hash
+DATE="date '+%Y-%m-%d %H:%M:%S'" # Command to get timestamps
+
+# The colors we use
+COLOR_FILENAME="\\033[1;34m"
+COLOR_ERROR="\\033[1;31m"
+COLOR_NORMAL="\\033[0m"
+
+
+#
+# Settings (can be changed with user input)
+#
+
+SKIP_FIRST_RUN="1" # Don't consider all files new for first run
+DEBUG="0"          # Enable debug messages
+VERBOSE="0"        # Enable verbose mode
+DIR=""             # Path to monitor
+
+
+#
+# Show script usage and exit
+#
+
+function usage {
+	echo "Usage: ${0} [--init] [--verbose] [--debug] [path]
+
+Checks python files in the folder quality and monitors changes.
+
+Arguments:
+  --init    Check all files for errors during the first iteration
+  --debug   Output much more information on what the script does
+  --verbose Show filenames for which changes are detected
+  --help    Show this message and exit
+  path      The path to monitor, defaults to working directory
+"
+	exit 1
+}
+
+
+#
+# Parse arguments
+#
+
+for arg in $@; do
+	case "${arg}" in
+		"--init")
+			SKIP_FIRST_RUN="0"
+			;;
+
+		"--debug")
+			DEBUG="1"
+			;;
+
+		"--verbose")
+			VERBOSE="1"
+			;;
+
+		"--help")
+			usage
+			;;
+
+		*)
+			# If no path found in arguments yet and looks like a path
+			if [ -z "${DIR}" ] && [ -d "${arg}" ]; then
+				# Use path for monitoring
+				DIR=$(readlink -f -- "${arg}")"/"
+			else
+				# Unknown argument, show usage and exit
+				usage
+			fi
+			;;
+	esac
+done
+
+
+#
+# Last checks and initializations
+#
+
+# If no path defined in arguments
+if [ -z "${DIR}" ]; then
+	# Monitor current directory
+	DIR=$(readlink -f -- $(pwd))"/"
+fi
+
+# Make sure the tools we need are available
+error=0
+if [ -z "${PEP8}" ]; then
+	echo "Can't find pep8, try: pip install pep8"
+	error=1
+fi
+if [ -z "${PYFLAKES}" ]; then
+	echo "Can't find pyflakes, try: pip install pyflakes"
+	error=1
+fi
+
+if [ "${error}a" == "1a" ]; then
+	echo "Errors detected, fix them and try again."
+	exit 1
+fi
+
+# Shorter variables for common use
+f="${COLOR_FILENAME}"
+e="${COLOR_ERROR}"
+n="${COLOR_NORMAL}"
+
+# Initialize variables we'll use later
+declare -A old_files
+declare -A new_files
+dir_length="${#DIR}"
+first_run=1
+
+if [ "${DEBUG}a" == "1a" ]; then
+	echo $(eval "${DATE}") "Monitoring ${DIR}"
+fi
+
+
+#
+# Main loop
+#
+
+while [[ true ]]; do
+
+	# Were checks run in this iteration?
+	checks_run="0"
+	# Were errors found in this iteration
+	found_errors="0"
+
+	# Find files in monitor path and loop through them file by file
+	while IFS= read -r -u3 -d $'\\0' file; do
+
+		if [ "${DEBUG}a" == "1a" ]; then
+			echo $(eval "${DATE}") "Checking if ${file} has changed"
+		fi
+
+		# Human readable filename (strip path)
+		human_file="${file:${dir_length}}"
+
+		# Calculate checksum for file, save to new_files
+		new_checksum=$("${HASH}" "${file}" | cut -d' ' -f1)
+		new_files["${file}"]="${new_checksum}"
+
+		# Check if checksum from previous round exists
+		check="0"
+		old_checksum=""
+		if test "${old_files[${file}]+isset}"; then
+			old_checksum="${old_files[${file}]}"
+		else
+			old_checksum="${new_checksum}"
+
+			# Only check new files if not first run
+			if [ "${first_run}a" == "0a" ] || [ "${SKIP_FIRST_RUN}a" == "0a" ]; then
+				if [ "${VERBOSE}a" == "1a" ]; then
+					if [ "${check}a" == "0a" ]; then
+						echo
+					fi
+
+					echo
+					echo -e $(eval "${DATE}") "New file: ${f}${human_file}${n}"
+				fi
+				check=1
+			fi
+		fi
+
+		# Check if checksum from previous round matches
+		if [ "${new_checksum}a" != "${old_checksum}a" ]; then
+			if [ "${VERBOSE}a" == "1a" ]; then
+				if [ "${check}a" == "0a" ]; then
+					echo
+				fi
+
+				echo
+				echo -e $(eval "${DATE}") "File changed: ${f}${human_file}${n}"
+			fi
+			check=1
+		fi
+
+		# If we need to run any checks
+		if [ "${check}a" == "1a" ]; then
+			checks_run="1"
+
+			if [ "${DEBUG}a" == "1a" ]; then
+				echo -e $(eval "${DATE}") "Checking file: ${f}${human_file}${n}"
+			fi
+
+			output=$("${PEP8}" "${file}")
+			if [ "${?}a" != "0a" ]; then
+				found_errors=1
+				echo
+				echo
+				# Format output filenames to human readable format
+				echo "${output//$file/$human_file}"
+			fi
+			
+			output=$("${PYFLAKES}" "${file}")
+			if [ "${?}a" != "0a" ]; then
+				found_errors=1
+				echo
+				echo
+				# Format output filenames to human readable format
+				echo "${output//$file/$human_file}"
+			fi
+
+		fi
+
+		# Save checksum
+		old_files["${file}"]="${new_checksum}"
+
+	# Input find -print0 results into the loop via
+	# descriptor 3 (not stdout or stderr)
+	done 3< <("${FIND}" "${DIR}" -type f -name "*.py" -print0)
+
+
+	if [ "${found_errors}a" == "1a" ]; then
+		echo
+		echo
+		echo -e "${e}Errors found!${n}"
+		echo
+		echo "Naughty naughty boy! Now go fix your mess."
+		echo
+
+		sleep 10
+	else
+
+		# Slightly different output when change was detected without any errors
+		if [ "${checks_run}a" == "1a" ]; then
+			echo -n ","
+		else
+			echo -n "."
+		fi
+		sleep 1
+
+	fi
+
+	first_run=0
+done
+{{< /highlight >}}
+
+<h4>Usage</h4>
+<code>pyquality [--init] [--verbose] [--debug] [path]</code>
+<p>Or...</p>
+<code>pyquality --help</code>
+
+<h4>Issues?</h4>
+<p>Make sure you have installed pep8 and pyflakes before trying to run this tool. Run "pip install pep8 pyflakes", as root if not in a virtualenv. If you don't have "pip", you might have to install a package called python-setuptools or just figure out how to get it.</p>

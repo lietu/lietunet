@@ -1,0 +1,23 @@
+@import "./syntax";
+pre.chroma {
+  padding: 1rem;
+  white-space: pre-wrap;
+  line-height: 1.2;
+
+  code {
+    white-space: pre-wrap;
+    word-break: break-all;
+    word-wrap: break-word;
+    text-shadow: none;
+    color: inherit;
+  }
+}
+
+.single h2 {
+  margin-top: 3rem;
+}
+
+[theme=dark] code:not(.chroma) {
+  color: #f8f8f2;
+  background-color: #272822;
+}

@@ -1,0 +1,87 @@
+---
+layout: post
+title: VMware ESXi + FreeNAS, NFS vs. iSCSI performance
+date: "2012-11-04"
+---
+
+<h4>Initial information</h4>
+<p>I have a FreeNAS box that I use to provide disk space to my VMware ESXi box that has no disks other than the USB stick it boots from.</p>
+
+<p>The FreeNAS machine's specifications:</p>
+<p>
+	<ul>
+		<li>Intel Celeron E3300 @ 2.50GHz</li>
+		<li>Gigabyte GA-EG41MF-US2H Intel G41 LGA775 microATX motherboard</li>
+		<li>Corsair Value Select 4GB (2x2048MB) 667MHz DDR2 RAM</li>
+		<li>3x 3TB Seagate Barracuda 3 TB 64 MB 7200 RPM 3.5" SATA III</li>
+	</ul>
+</p>
+
+<p>The VMware ESXi machine's specifications:</p>
+<p>
+	<ul>
+		<li>Intel Core 2 Quad Q9400 @ 2.66GHz</li>
+		<li>Intel DG45ID LGA775 microATX motherboard</li>
+		<li>4x Transcend 2GB JetRam 800Mhz DDR2 RAM (8GB total)</li>
+	</ul>
+</p>
+
+<p>The disks on the FreeNAS are configured as ZFS RAID-Z with 1 parity (~5TB usable space), and I have most of my virtual machines created with virtual disks on the main datastore (.vmdk files), which in turn is shared from FreeNAS with NFS with dedicated 1Gbit NICs.</p>
+
+<p>I had decided to go with NFS because it was rather easy to set up (I had no experience with setting up iSCSI), and I was under the impression that NFS should give good and solid performance, while maybe not being the most optimal for the scenario.</p>
+
+<h4>The test</h4>
+<p>I grew annoyed by the occasional huge lags I've experienced with NFS, and wanted to see if I could get anything more than a purely marginal (e.g. 1-2%) performance boost out of using iSCSI. As an additional bonus, I could figure out how this iSCSI stuff works, at least in FreeNAS.</p>
+
+<p>I set up two identical virtual machines:</p>
+<p>
+	<ul>
+		<li>4 virtual CPUs</li>
+		<li>768MB of RAM</li>
+	</ul>
+</p>
+
+<p>I also set up a 16GB file on the same ZFS filesystem that is shared for my VMware's use over NFS, and configured that for iSCSI use. Instructions that I followed (for a much older version of FreeNAS and VMware, but clear enough) are available at: <a href="http://www.youtube.com/watch?v=Dc20IT1msAk" target="_blank">http://www.youtube.com/watch?v=Dc20IT1msAk</a></p>
+</p>
+
+<p>After this, I added the disks to the virtual machines, one got the iSCSI 16GB disk, for the other I created a normal 16GB virtual disk image via the NFS datastore. Then I booted the machines and installed Fedora 17 minimal install on both of them.</p>
+
+<p>I tried a few different benchmarks, until I decided to settled for a fairly simple one-liner bash to test the performance.</p>
+
+{{< highlight bash >}}
+mkdir /test; while [ true ]; do time bonnie++ -u0 -r768 -s2048 -n16 -b -d /test; done
+{{< /highlight >}}
+
+Basically what it does is run a fairly basic Bonnie++ test in a loop until I press Ctrl+C  or do something else to stop it. I couldn't be bothered with finding a program that generates output that I really would benefit from, and would actually generate some proper load on the systems, so instead I settled for "time" to tell me how long it took to run each iteration of Bonnie++, and VMware's performance graphs to tell me the rest of the story.
+
+<h4>The results</h4>
+<p>I can start by telling you that from the beginning I expected to see iSCSI being faster, but not with a huge margin. I was right about it being faster, but not about the margin.</p>
+
+<p>The first iteration of Bonnie++ with the settings listed above executed as follows:</p>
+
+<p>
+	<ul>
+		<li><strong>NFS: <span class="red">107 minutes and 55 seconds</span></strong></li>
+		<li><strong>iSCSI: <span class="green">11 minutes and 40 seconds</span></strong></li>
+	</ul>
+</p>
+
+<p>During the time it took the NFS machine to finish it's first iteration, iSCSI machine finished 9, nearly 10 iterations. The best time iSCSI finished in was 10 minutes 14 seconds, worst iteration was 11 minutes 59 seconds.</p>
+
+<p>Also, VMware ESXi's graphs proved very interesting .. the whole execution of the test on the NFS machine couldn't fit in one screen, so the worst peaks of NFS latency managed to slip off the screen before I realized I should take a screenshot, since only the first few parts of Bonnie++'s test seem to cause huge latencies.</p>
+
+<p>On the graph, "vmdisks" (grey) is the NFS share, and "iscsitest" (red &amp; orange) obviously the iSCSI disk.</p>
+
+<img src="/img/blog/original/vmware-graphs.jpg" />
+
+<p>On average, each write took 935ms on the NFS share, and 243ms on iSCSI, the maximum latencies show a similar trend. 7300ms on NFS, 1200ms on iSCSI.</p>
+
+<p>Also generally the iSCSI machine feels a LOT more snappy and responsive than the other virtual machines.</p>
+
+<h4>Conclusion</h4>
+<p>I had decided to go with NFS before because it was rather effortless to set up, and I didn't think it would make a huge difference with my not-very-active disk use.</p>
+
+<p>Also, I can't find a real downside to using iSCSI. I store the disks as files pretty much just like before, they're just not .vmdk -files, instead I decided to call them ".iscsi" -files .. I see little difference. I can probably just copy the file to "clone" the hard disk, etc. just as with .vmdk files .. the only minor downside is that the configuration takes a few more clicks per drive, but I wouldn't really say it's difficult to do.</p>
+
+<p>Now I think I will be switching all my virtual machines to use iSCSI disks, even if it does take just a little more effort that way, but I think that should give me a lot better experience.</p>
+

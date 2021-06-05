@@ -1,0 +1,76 @@
+---
+layout: post
+title: Windows and sleep mode
+date: "2012-12-22"
+---
+
+<h4>Getting Windows to play nicely with sleep mode</h4>
+<p>I just recently decided to get my main desktop to finally work with sleep mode properly. It has never worked in the past (the heart of the machine, mobo &amp; cpu, are a couple years old), but now I felt like I want to do something about it.</p>
+<p>As a quick reference, here are the key details of the machine:</p>
+<p>
+	<ul>
+		<li><strong>OS:</strong> Windows 7 Professional</li>
+		<li><strong>CPU:</strong> Intel Core i7 920, overclocked</li>
+		<li><strong>RAM:</strong> 6GB triple channeled 1600MHz DDR3, OCZ</li>
+		<li><strong>Motherboard:</strong> Asus Rampage II Extreme (X58 / ICH10R)</li>
+		<li><strong>GPU:</strong> EVGA Nvidia GeForce GTX 580</li>
+		<li><strong>Audio:</strong> Asus Xonar Essence STX</li>
+		<li><strong>SSD:</strong> OCZ RevoDrive 3 x2 240GB</li>
+	</ul>
+</p>
+
+<h4>Getting Windows to recover from sleep mode</h4>
+<p>Initially, my issue was that the computer failed to recover from sleep mode. It went into sleep mode just fine, but when recovering I would end up with my screen not powering on from standby mode, but music would start playing fine (if I left a music player on when entering sleep mode). A while later, I could hear from the music that the machine blue screened.</p>
+<p>I ended up fixing this issue, by disconnecting all USB devices that were not my keyboard and mouse and trying again. It worked, and all that was left was to figure out which device caused the issue. The cause turned out to be my printer, and turning it off before trying to sleep is a fix.</p>
+<p>There are a lot of other possible causes, this is just what fixed it for me. You should also try and update all your drivers (no, I will not help you with how to do it), and Googling for more options.</p>
+
+<h4>Getting Windows to not wake up from sleep mode too easily</h4>
+<p>After I got the sleep mode to work, I bumped into another issue. The machine would wake up from sleep mode with the slightest move of the mouse, by pressing any button on the keyboard, and stuff like that.</p>
+<p>This is not an option for me, since I have cats. They like to walk around everywhere, including on my keyboard. I wanted the machine to only wake up when I press the power button, which is cat-proof.</p>
+<p>After some Googling, I found two useful commands for this:</p>
+
+{{< highlight bat >}}
+powercfg -devicequery wake_armed
+{{< /highlight >}}
+<p>Lists devices that can wake up Windows from sleep mode</p>
+
+{{< highlight bat >}}
+powercfg -devicedisablewake "Device Name"
+{{< /highlight >}}
+<p>Disables waking up on events from the device</p>
+
+<p>Now turn that into some Windows Batch magic and you end up with the command:</p>
+
+{{< highlight bat >}}
+for /F "tokens=*" %A in ('powercfg -devicequery wake_armed') do powercfg -devicedisablewake "%A"
+{{< /highlight >}}
+
+<p>(Write it on an Administrator Command Prompt, all on one line)</p>
+
+<p>What that does is query powercfg for all devices that can wake up Windows from sleep mode, loop through them one by one and then disable waking up from events for each one.</p>
+
+<h4>Windows not automatically going to sleep mode?</h4>
+<p>So of course, this is Windows, so the issues didn't end here. After these issues were resolved, I could successfully put the machine to sleep mode, recover it, and not recover needlessly when my cats were running around. However, the machine would not automatically go to sleep after the timeout set in Power Options -control panel.</p>
+<p>There are a few possible reasons for this, that I (now) know of. For one, an application (video player in general) is preventing automatic sleep, or a driver (e.g. your sound card) is doing that. If you have similar issues, this is what you can do to get it working.</p>
+
+<p>
+	<ul>
+		<li>Set your active power plan's "Put the computer to sleep" -setting to 1 minute</li>
+		<li>In an Administrator Command Prompt, run: powercfg -energy -output "C:\energy_diagnostics.html"</li>
+		<li>Wait for it to finish, and open the generated file (C:\energy_diagnostics.html) in a browser</li>
+		<li>It should tell you if it's an application, or if like in my case, it's a device driver that is preventing the automatic sleeping</li>
+		<li>If it is an application, either close that application or check it's settings (or Google more) to stop it from preventing automatic sleeping</li>
+		<li>In my case, it said:</li>
+		<ul>
+			<li>The device or driver has made a request to prevent the system from automatically entering sleep.</li>
+			<li>Requesting Driver Device:&nbsp;ASUS Xonar Essence STX Audio Device</li>
+		</ul>
+		<li>To ignore this request from the driver, run the command (replace "ASUS Xonar Essence STX Audio Device" with the name of your device, duh):</li>
+		<ul>
+			<li>powercfg -requestsoverride driver "ASUS Xonar Essence STX Audio Device"&nbsp;system</li>
+		</ul>
+	</ul>
+</p>
+
+<p>After this fix, my computer would finally work properly with sleep mode, including automatically going to sleep after a set timeout (30min in my case), and requiring me to actually press the cat-proof power button to wake it up again.</p>
+

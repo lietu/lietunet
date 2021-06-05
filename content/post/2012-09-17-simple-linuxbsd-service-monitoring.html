@@ -1,0 +1,60 @@
+---
+
+layout: post
+title: Simple Linux/BSD service monitoring script
+date: "2012-09-17"
+
+---
+
+
+<p>Here's a simple script to monitor the status of a service via a normal control script such as /etc/init.d/varnishd as commonly found under Linux and BSD based systems .. it should be super simple to modify for most other types of systems, such as systemctl.</p>
+
+<p>Just configure, place somewhere on the server, and set a crontab line to run it every now and then.</p>
+
+{{< highlight bash >}}
+#!/usr/bin/env bash
+
+# ----- ------------- ----- #
+# ----- CONFIGURATION ----- #
+# ----- ------------- ----- #
+
+# Path to control script (usually in rc.d or init.d)
+SERVICED="/usr/local/etc/rc.d/varnishd"
+
+# Who should get crash notifications
+EMAIL_RECIPIENT="recipient@example.com"
+
+# Subject of the crash notification
+EMAIL_SUBJECT="${SERVICED} crash detected"
+
+
+# ----- ------------ ----- #
+# ----- SCRIPT LOGIC ----- #
+# ----- ------------ ----- #
+
+# Check status
+"${SERVICED}" status > /dev/null 2>&1
+service_status=$?
+
+# Exit code will be 1 if varnish is not running
+if [ $service_status -eq 1 ]; then
+
+    service_start_message=$("${SERVICED}" start 2>&1)
+
+    host=$(uname -n)
+    uptime=$(uptime)
+
+    email_message="Service ${SERVICED} seems to have crashed on host ${host}.
+
+Uptime:
+${uptime}
+
+Messages from trying to restart it:
+${service_start_message}
+"
+
+    # Send email
+    echo "${email_message}" | mail -s"${EMAIL_SUBJECT}" "${EMAIL_RECIPIENT}"
+
+fi
+{{< /highlight >}}

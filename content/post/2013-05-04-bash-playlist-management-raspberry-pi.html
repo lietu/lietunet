@@ -1,0 +1,179 @@
+---
+
+layout: post
+title: BASH playlist management for your Raspberry Pi
+date: "2013-05-04"
+
+---
+
+
+<h4>Introduction</h4>
+<p>I just recently got a <a href="http://www.raspberrypi.org/">Raspberry Pi</a>, which is a decent piece of hardware, but the fact that it can't really do video playback using any other player than omxplayer left me annoyed. Omxplayer isn't a very nice player, most annoyingly it's missing playlist functionality.</p>
+<p>To make the Raspberry Pi a bit more useful for me, I decided to make my own playlist manager around omxplayer, and this is it.</p>
+
+<h4>What to do</h4>
+
+<h5>Set up a local bin folder (optional but recommended)</h5>
+
+<p>Why would you want to do this? Because you shouldn't be modifying the system folders with your own scripts etc. .. if you feel otherwise, feel free to modify your system any way you want.</p>
+
+<p>Run the following commands on your BASH terminal to create a ~/bin and add it to your path:</p>
+
+{{< highlight bash >}}
+# Create the local bin folder
+mkdir "${HOME}/bin"
+
+# Set decent permissions on it
+chmod 0700 "${HOME}/bin"
+
+# Add it to your PATH in future sessions
+echo -e '\nPATH="${PATH}:${HOME}/bin"' >> "${HOME}/.bashrc"
+
+# And enable it in the current one
+export PATH="${PATH}:${HOME}/bin"
+{{< /highlight >}}
+
+<p>If you have other terminal sessions open and want to activate the local bin on them, just run the last line from that on them..</p>
+
+
+<h5>Create the scripts</h5>
+
+<p>Create the following two scripts in your local bin, or system bin folder if you didn't create a local bin..</p>
+
+<p><b>process_playlist</b></p>
+
+{{< highlight bash >}}
+#!/usr/bin/env bash
+#
+# Plays videos from playlist
+#
+# Copyright © 2013 Janne Enberg http://lietu.net/
+# This work is free. You can redistribute it and/or modify it under the
+# terms of the Do What The Fuck You Want To Public License, Version 2,
+# as published by Sam Hocevar. See http://www.wtfpl.net/ for more details.
+#
+
+# If you want to switch omxplayer to something else, or add parameters, use these
+PLAYER="omxplayer"
+PLAYER_OPTIONS=""
+
+# Where is the playlist
+PLAYLIST_FILE="${HOME}/.playlist"
+
+# Process playlist contents
+while [ true ]; do
+        # Sleep a bit so it's possible to kill this
+        sleep 1
+
+        # Do nothing if the playlist doesn't exist
+        if [ ! -f "${PLAYLIST_FILE}" ]; then
+                echo "Playlist file ${PLAYLIST_FILE} not found"
+                continue
+        fi
+
+        # Get the top of the playlist
+        file=$(cat "${PLAYLIST_FILE}" | head -n1)
+
+        # And strip it off the playlist file
+        cat "${PLAYLIST_FILE}" | tail -n+2 > "${PLAYLIST_FILE}.new"
+        mv "${PLAYLIST_FILE}.new" "${PLAYLIST_FILE}"
+
+        # Skip if this is empty
+        if [ -z "${file}" ]; then
+                echo "Playlist empty or bumped into an empty entry for some reason"
+                continue
+        fi
+
+        # Check that the file exists
+        if [ ! -f "${file}" ]; then
+                echo "Playlist entry ${file} not found"
+                continue
+        fi
+
+        echo
+        echo "Playing ${file} ..."
+        echo
+
+        "${PLAYER}" ${PLAYER_OPTIONS} "${file}"
+
+        echo
+        echo "Playback complete, continuing to next item on playlist."
+        echo
+done
+{{< /highlight >}}
+
+
+<p><b>playlist</b></p>
+
+{{< highlight bash >}}
+#!/usr/bin/env bash
+#
+# Add files to playlist
+#
+# Copyright © 2013 Janne Enberg http://lietu.net/
+# This work is free. You can redistribute it and/or modify it under the
+# terms of the Do What The Fuck You Want To Public License, Version 2,
+# as published by Sam Hocevar. See http://www.wtfpl.net/ for more details.
+#
+
+# Where is the playlist
+PLAYLIST_FILE="${HOME}/.playlist"
+
+
+# Check for proper usage
+if [ $# -eq 0 ]; then
+        echo "
+Adds files to the system playlist (${PLAYLIST_FILE})
+
+Usage:
+  playlist *.avi
+  playlist /path/to/futurama/*/*
+
+"
+
+        exit 1
+fi
+
+# Loop through arguments given
+for entry in "$@"; do
+        if [ ! -f "${entry}" ]; then
+                echo "Invalid entry, ${entry} .. skipping"
+                continue
+        fi
+
+        # Get full path to the file
+        fullPath=$(readlink -f -- "${entry}")
+
+        # Append file to playlist
+        echo "${fullPath}" >> "${PLAYLIST_FILE}"
+        echo "Added ${fullPath} to system playlist"
+done
+{{< /highlight >}}
+
+<p>It is pretty important that there is nothing in the file before the #!, no new lines, no nothing. Otherwise the formatting doesn't matter much...</p>
+
+<p>Make the scripts executable:</p>
+{{< highlight bash >}}
+chmod +x "${HOME}/bin/"*
+{{< /highlight >}}
+
+<p>To make the playlist processing script appear in your menus, you can put the following contents in ~/.local/share/applications/process_playlist.desktop</p>
+
+{{< highlight ini >}}
+[Desktop Entry]
+Type=Application
+Name=Process system playlist
+Exec=process_playlist
+Terminal=True
+Categories=AudioVideo;Player;
+Icon=/usr/share/icons/nuoveXT2/96x96/categories/applications-multimedia.png
+{{< /highlight >}}
+
+<h5>Use it</h5>
+
+<p>
+	<ol>
+		<li>Start process_playlist from a terminal or the menu item.</li>
+		<li>Find a bunch of media files to add to your playlist, e.g. /path/to/*.avi and to start playing them run: playlist /path/to/*.avi</li>
+	</ol>
+</p>

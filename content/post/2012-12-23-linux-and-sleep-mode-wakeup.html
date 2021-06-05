@@ -1,0 +1,22 @@
+---
+layout: post
+title: Linux and sleep mode wakeup
+date: "2012-12-23"
+---
+
+<p>I just recently battled a long time to get my Windows machine to sleep properly. That is, to automatically go to sleep mode after a timeout, not wake up from sleep mode from useless events like keyboard and mouse, and recover from sleep mode successfully.</p>
+<p>In Linux, pretty much everything worked out of the box, even with exotic-ish hardware (Apple Mac Mini), except for not waking up from useless events.</p>
+
+<h4>Preventing automatic wakeup from useless events</h4>
+<p>So I had the issue that my Linux desktop was waking up when I touched the mouse or keyboard, this is not a good thing in general, and especially not for me since I have several cats walking around all the time.</p>
+<p>I just recently battled for quite a while with Windows to get it to work, and it was somewhat difficult to find useful and relevant information. It was a nice reminder of how great the Linux community is when I had to do the same thing in Linux.</p>
+<p>It took a single Google query to find all the data I needed (from the first result), and here is the script that will disable waking up from all events except the power button:</p>
+
+{{< highlight bash >}}
+for dev in $(cat /proc/acpi/wakeup | grep enabled | cut -f1); do echo $dev > /proc/acpi/wakeup; done
+{{< /highlight >}}
+
+<p>(Run it as <em>root</em>, <em>su -</em>, or <em>sudo -i</em>)</p>
+<p>What it does, is list all the enabled wakeup devices (<em>cat /proc/acpi/wakeup | grep enabled</em>), and loop through the items on the first column, then echo the name of the device back to the API to toggle their state to disabled.</p>
+<p>They say some devices' state can be reset after a reboot, so it could be useful to put that line in <strong>/etc/rc.local</strong> or similar file on your system.</p>
+

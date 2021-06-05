@@ -1,0 +1,264 @@
+---
+layout: post
+title: Nginx reverse proxy cache for multiple sites
+date: "2013-03-21"
+---
+
+<h4>Introduction</h4>
+<p>If you are hosting a site or multiple sites where performance is more important than that updates are immediately visible, or that the architecture is especially "cool", you might want to think of running Nginx as a reverse proxying cache server.</p>
+<p>What this approach provides is easily configurable lightning fast serving of your content.</p>
+<h4>What you will need</h4>
+<p>
+	<ul>
+		<li>Nginx installed on a server (I'm sure you can find another guide for this)</li>
+		<li>Write access to Nginx configuration directory</li>
+		<li>Main web server listening on non-default port (e.g. 8080), or on a different server.</li>
+	</ul>
+</p>
+
+<h4>Directory structure</h4>
+<p>First, locate your nginx configuration folder, it's often /etc/nginx, but you can try: find / -name "nginx.conf"</p>
+<p>Inside the configuration folder we will be creating the following structure:</p>
+<p>
+	<ul>
+		<li>sites-available - Different site configurations</li>
+		<li>sites-enabled - Currently enabled sites' configurations</li>
+		<li>include.d - Shared configuration files for sites</li>
+		<li>conf.d - Additional configuration files</li>
+	</ul>
+</p>
+<p>To do this go in your nginx configuration folder, e.g. /etc/nginx and run the following:</p>
+{{< highlight bash >}}
+mkdir sites-available sites-enabled include.d conf.d
+{{< /highlight >}}
+<p>It is safe to ignore errors such as "mkdir: cannot create directory `sites-available': File exists".</p>
+
+<h4>Base configuration</h4>
+<p>First step is to configure Nginx to some decent defaults.</p>
+<p>Open up your nginx.conf from your nginx configuration folder</p>
+<p>Replace the file contents with the following, reading the comments and adjusting accordingly:</p>
+
+{{< highlight nginx >}}
+# The user to run Nginx as, often www, www-data or nginx
+# It is safest to leave the previous setting as it is
+user www-data;
+
+# Decent starting point for this is the number of cores/threads on the machine
+# cat /proc/cpuinfo | grep ^processor | wc -l
+worker_processes 4;
+
+# Pid file location, the default value will often be just fine
+pid /var/run/nginx.pid;
+
+
+events {
+	# 1024 is a decent starting point
+	# You can increase it further, but you should check "ulimit -n" before
+	# adjusting higher
+	worker_connections 1024;
+
+	# If you find that this gives you extra performance feel free to uncomment
+	# I however didn't find it to have any effect at all
+	# multi_accept on;
+}
+
+http {
+
+	#
+	# Basic optimizations
+	#
+
+	sendfile on;
+	tcp_nodelay on;
+
+	# This might be better set to on for some, off for some
+	# for me however, I saw no difference between having it enabled or disabled
+	tcp_nopush on;
+
+	# How long to wait for new request from the same connection
+	keepalive_timeout 180;
+
+	# Don't advertise every detail of the server to all requests (security)
+	server_tokens off;
+
+	# Uncomment if you for some reason have a very long domain name
+	# server_names_hash_bucket_size 64;
+
+	# File type detection and default
+	include /etc/nginx/mime.types;
+	default_type application/octet-stream;
+
+
+	#
+	# Logging Settings
+	#
+
+	# Access logging is a bit of useless, don't 
+	# enable it unless you really need to
+	# access_log /var/log/nginx/access.log;
+
+	# Error logging however is useful, make sure the destination folder exists
+	error_log /var/log/nginx/error.log;
+
+
+	#
+	# Gzip Settings
+	#
+	# Gzipping content will increase performance from client's point of view
+	#
+
+	# Enable Gzip compression
+	gzip on;
+
+	# But disable it for clients that don't support it
+	gzip_disable "msie6";
+	gzip_disable "Wget";
+
+	# Make sure any third-party proxies cache things properly
+	gzip_vary on;
+
+	# Compress regardless of caching headers
+	gzip_proxied any;
+
+	# Compress as much as possible
+	gzip_comp_level 9;
+
+	# You might want to change this to 1.0 if you find Gzip gives you more
+	# than keepalive, as keepalive won't work with 1.0 and Gzip
+	# gzip_http_version 1.0;
+
+	# File types to Gzip compress, it works best for plain text files
+	gzip_types text/plain text/css application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript;
+
+
+	#
+	# Caching
+	#
+
+	# Enables proxy cache to /var/cache/nginx/xx/xx/xx/*
+	# ... calls the cache "STATIC"
+	# ... delete files from cache completely if not requested within 24h
+	# ... and allow a maximum of 1GB of disk space to be consumed for it
+	#
+	# Make sure the directory /var/cache/nginx exists and
+	# is writable by the Nginx user, or change the path
+	#
+	proxy_cache_path /var/cache/nginx levels=2:2:2 keys_zone=STATIC:1000m inactive=24h max_size=1g;
+
+	# Include all additional configuration files (please do check their contents)
+	include /etc/nginx/conf.d/*.conf;
+
+	# Include all configs for enabled sites
+	include /etc/nginx/sites-enabled/*;
+}
+
+
+{{< /highlight >}}
+
+<h4>Common site configuration</h4>
+<p>This is configuration that will be shared by all your sites.</p>
+<p>Create the file include.d/proxy.conf inside your nginx configuration directory and insert the contents below.</p>
+
+{{< highlight nginx >}}
+# Defines if reverse-proxying should use HTTP 1.0 or 1.1
+# You should try which gives you better results, 
+# or if you find any significant differences at all
+proxy_http_version		1.0;
+
+# Pass through the original Host the request was made for
+proxy_set_header		Host $host;
+
+# Allow destination server to know where the proxied requests came from
+proxy_set_header		X-Real-IP $remote_addr;
+proxy_set_header		X-Forwarded-For $proxy_add_x_forwarded_for;
+
+# Clear a few headers we might not want to pass on
+# If you do not know what these do, it's safe to leave them as is
+# If you do, you should know if you want to clear them or not
+proxy_set_header		Accept "";
+proxy_set_header		Connection "";
+
+# Enable caching for the proxied requests using the STATIC storage
+proxy_cache				STATIC;
+
+# Cache 200 (OK), as well as 301 and 302 (redirect) responses for 4h
+proxy_cache_valid		200 301 302 4h;
+
+# Cache 404 (Not found) responses for only 10m, just in case of human errors
+proxy_cache_valid		404 10m;
+
+# Allow using stale data (cached data that has expired) in the following cases:
+# - an error has occurred while connecting to the server, sending a request to it, or reading its response
+# - timeout occurred during the connection with the server, transfer the request or while reading response from the server
+# - server returned a empty or incorrect answer
+# - server returned an error status (500, 502-504)
+proxy_cache_use_stale	error timeout invalid_header updating http_500 http_502 http_503 http_504;
+
+#
+# Please be sure to understand that this configuration doesn't care much about
+# what kind of headers the server sends about if the content should be cached
+# or not, it just does it's thing.
+#
+# For more information, see: http://wiki.nginx.org/HttpProxyModule#proxy_no_cache
+#
+{{< /highlight >}}
+
+<h4>Site configuration</h4>
+<p>Now for the site-specific configuration. I will be writing the configuration for http://example.com/, but you should of course adjust for your own domain.</p>
+<p>Place this in sites-available/example.com in the nginx configuration folder.</p>
+
+{{< highlight nginx >}}
+
+# Reverse proxy http://example.com/ to 127.0.0.1:8080
+server {
+	listen 80;
+
+	# The domain name(s) to respond to
+	server_name example.com;
+
+	# All requests should be handled like this:
+	location / {
+		# Reverse proxy to 127.0.0.1:8080
+		# (change accordingly to your configuration)
+		proxy_pass http://127.0.0.1:8080;
+
+		# Append common proxy configuration
+		include include.d/proxy.conf;
+	}
+
+}
+
+# Permanently redirect *://*.example.com/* to *://example.com/*
+#
+# It might be that you don't want this, but I see
+# it as vital search engine optimization
+server {
+	listen 80;
+	server_name *.example.com;
+	return 301 $scheme://example.com$request_uri;
+}
+
+{{< /highlight >}}
+
+<p>You can create as many of these as you need to.</p>
+
+<h4>Enabling/disabling sites</h4>
+<p>Now to enable a site, you just symlink a file from sites-available/domain.com to sites-enabled/domain.com and reload nginx config. To disable one, you remove the sites-enabled symlink and reload the config.</p>
+<p>Assuming your nginx configuration folder is at /etc/nginx, you can run the following to enable domain.com:</p>
+
+{{< highlight bash >}}
+ln -s /etc/nginx/sites-available/domain.com /etc/nginx/sites-enabled
+{{< /highlight >}}
+
+<h4>More reading</h4>
+<p>Here's a few links to interesting resources on Nginx configuration:</p>
+<p>
+	<ul>
+		<li><a href="http://wiki.nginx.org/Pitfalls">http://wiki.nginx.org/Pitfalls</a></li>
+		<li><a href="http://wiki.nginx.org/QuickStart">http://wiki.nginx.org/QuickStart</a></li>
+		<li><a href="http://wiki.nginx.org/Configuration">http://wiki.nginx.org/Configuration</a></li>
+	</ul>
+</p>
+
+<h4>Further thoughts</h4>
+<p>Combine this with my <a href="/2013/02/simple-website-cache-warmup-tool.html">performance test / cache warmup tool</a> and you should have a snappy site.</p>

@@ -1,0 +1,72 @@
+baseURL = "https://lietu.net/"
+defaultContentLanguage = "en"
+languageCode = "en"
+title = "Janne \"Lietu\" Enberg"
+theme = "uBlogger"
+
+[params]
+  # uBlogger theme version
+  version = "2.0.X"
+  # site default theme ("light", "dark", "auto")
+  defaultTheme = "dark"
+
+  # Footer config
+  [params.footer]
+    enable = true
+
+  # Home page config
+  [params.home]
+    # uBlogger NEW | 0.2.0 amount of RSS pages
+    rss = 10
+    # Home page profile
+    [params.home.profile]
+      enable = true
+      # Gravatar Email for preferred avatar in home page
+      gravatarEmail = "janne.enberg@lietu.net"
+      # URL of avatar shown in home page
+      avatarURL = "/images/avatar.png"
+      # uBlogger CHANGED | 0.2.7 title shown in home page (HTML format is supported)
+      title = "Lietu"
+      # subtitle shown in home page
+      subtitle = "Entrepre-nerd, creative problem solver, enthusiastic IT generalist"
+      # whether to show social links
+      social = true
+      # uBlogger NEW | 0.2.0 disclaimer (HTML format is supported)
+      disclaimer = ""
+
+    # Home page posts
+    [params.home.posts]
+      enable = true
+      # special amount of posts in each home posts page
+      paginate = 100
+      # uBlogger DELETED | 0.2.0 replaced with hiddenFromHomePage in params.page
+      # default behavior when you don't set "hiddenFromHomePage" in front matter
+      defaultHiddenFromHomePage = false
+
+  [params.social]
+    GitHub = "lietu"
+    Linkedin = "lietu"
+    Twitter = "lietux"
+
+[menu]
+  [[menu.main]]
+    identifier = "posts"
+    # you can add extra information before the name (HTML format is supported), such as icons
+    pre = ""
+    # you can add extra information after the name (HTML format is supported), such as icons
+    post = ""
+    name = "Posts"
+    url = "/post/"
+    # title will be shown when you hover on this menu link
+    title = ""
+    weight = 1
+
+# Markup related configuration in Hugo
+[markup]
+  # Syntax Highlighting (https://gohugo.io/content-management/syntax-highlighting)
+  [markup.highlight]
+    # false is a necessary configuration
+    noClasses = false
+
+[Permalinks]
+  post = ":year/:month/:filename"

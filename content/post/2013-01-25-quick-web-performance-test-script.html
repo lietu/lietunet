@@ -1,0 +1,49 @@
+---
+
+layout: post
+title: Quick Web performance test script
+date: "2013-01-25"
+
+---
+
+
+<h4>Preface</h4>
+<p>I was interested in testing out my new homepage server's performance in rather simple terms. I thought bombarding a single URL with Apache Benchmark would distort the results too much, and I also didn't want to load the resources outside my control (e.g. Google Analytics). I made a simple BASH script that loops indefinitely and does a wget call that fetches all the resources and links on my homepage recursively and displays the time it took to do that for each iteration.</p>
+<h4>Code</h4>
+<p>This simple shell script should work for on most platforms as long as you have "date" that supports "+%s.%N" -format and "wget".</p>
+
+{{< highlight bash >}}
+
+#!/usr/bin/env bash
+
+# Make sure we have an URL as a parameter
+url="${1}"
+if [ -z "${url}" ]; then
+	echo "Usage: $0 http://url.to.test/"
+	exit 1
+fi
+
+
+# Command to load the page
+wget="$(which wget) -m -nd -q -O /dev/null"
+
+# Command to get current time
+date="$(which date) +%s.%N"
+
+while [ true ]; do
+	start=$($date)
+
+	$wget "${url}"
+
+	end=$($date)
+
+	elapsed=$(echo "${end}-${start}" | bc)
+	
+	echo "Iteration done in ${elapsed} seconds"
+done
+
+
+{{< /highlight >}}
+
+<p>Put the code in some file, and run it with: ./somefile.sh http://someurl.com/</p>
+

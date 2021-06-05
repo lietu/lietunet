@@ -1,0 +1,6 @@
+The following files and directories and their contents are Copyright Janne Enberg. You may not reuse anything therein without my permission:
+
+/content/*
+/static/img/*
+
+All other directories and files are BSD 3-clause licensed except for 3rd party content which have their own `LICENSE` files. Feel free to use the HTML and CSS as you please.

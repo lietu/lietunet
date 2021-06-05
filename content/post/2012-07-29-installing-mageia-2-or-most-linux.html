@@ -1,0 +1,65 @@
+---
+layout: post
+title: Installing Mageia 2 (or most Linux systems) on Mac Mini 4.1 (mid 2010 edition)
+  (and probably other Macs too)
+date: "2012-07-29"
+---
+
+<p>It took me quite a while to get a well working linux dualboot on my Mac Mini (version 4.1, the mid 2010 edition), and wanted to make it easier for others. Most of this should apply to other distributions of Linux, as well as other Intel-based Mac machines.</p>
+<p>The instructions are a bit rough (didn't plan on this, but turned out to be difficult enough to warrant writing this), but this is roughly how it goes:</p>
+<br />
+<ol>
+ <li>In Mac OS X, use Boot Camp Assistant to divide your disk space between what you want for Mac OS X and what you want for the other OS, you could format it with the Disk Utility to a Windows file system for more easy detection later on.</li>
+ <li>Install rEFIt</li>
+ <ul>
+  <li>They say you should reboot at least twice after this to confirm it works</li>
+  <li>It is probably a good idea to tell rEFIt to sync the partition tables at this point</li>
+ </ul>
+ <li>Download your distribution's install .ISO (Mageia 2 and Linux Mint have been a success for me so far) and burn on a CD/DVD</li>
+ <ul>
+  <li>I used the Mageia 2 .ISO for network install with extra drivers (I doubt the networking would work without it)</li>
+  <li>It should be possible to do USB boot from the .ISOs, I didn't do it, so can't tell you how .. shouldn't be too difficult to Google for instructions though</li>
+ </ul>
+ <li>Reboot your Mac, with the CD/DVD in the drive, and press down the "C"-key during the boot screen to boot from the CD/DVD</li>
+ <li>Depending on the distribution (at least on Ubuntu based ones), you might have to find a way to give the additional boot options "nomodeset reboot=pci" to your kernel</li>
+ <ul>
+  <li>Please note that Mageia 2 required NO additional boot options</li>
+ </ul>
+ <li>Your installation should be pretty straight forward, follow the on-screen instruction, but look for the following details.</li>
+ <li>On Mageia 2, I needed to install the additional "ata_generic" driver to support the SATA controller and the disks to be detected, there was a button in the installer for doing that when it didn't detect any disks.</li>
+ <li>Disk to install to is most likely going to be /dev/sda3 .. the first partition is used by an entry to tell that the disk is using GPT(GUID Partition Table), the second partition (/dev/sda2) was in my case the one with Mac OS X</li>
+ <ul>
+  <li>If you see a partition marked as HFS+, it's the one with Mac OS X, if you formatted the spare partition for Windows, it should be the one that says FAT or NTFS</li>
+ </ul>
+ <li>When asked where to store the boot loader, every guide on the Internet says you shouldn't put it on /dev/sda, but instead on /dev/sda3 or whatever you installed Linux on .. you should try this at first, just to be safe, but I found this to be the exact opposite of what worked. I installed my Grub on /dev/sda, which is generally the default.</li>
+ <ul>
+  <li>This setting was behind some advanced settings button in my Mageia 2 installer</li>
+ </ul>
+ <li>When the installer is done, reboot and hold down the Option/Alt key to get to rEFIt, and choose "Boot Linux from HD"</li>
+ <li>If you had to add the kernel parameters to boot into your installer disc, you'll probably have to add them to boot into your linux system. Try and find a way to permanently add the settings to Grub if this is the case (notes below might help).</li>
+ <li>Once you have logged in, Ubuntu based distributions will generally tell you there's proprietary drivers available and allow easy installation of them, you should install the Nvidia drivers for better performance.</li>
+ <ul>
+  <li>In Mageia 2, I had to find the Mageia Control Center, go to Hardware -&gt; Browse and configure hardware, then to Videocard -&gt; GT216 [GeForce 320M] and click "Run config tool" .. Click on the button beside "Graphic Card" and select "nv" X server, and find the "GeForce 6100 to 360" or so driver. Configure your monitor settings, save, and reboot.</li>
+ </ul>
+ <li>All done.</li>
+</ol>
+<p>Some notes from my experience that might be useful in other cases:</p>
+<ul>
+ <li>I bumped into some issues with UUIDs at a few points, I found it more safe to change the UUIDs in /etc/fstab and Grub config to /dev/sda3 .. if you find your system non-bootable, try and boot into rescue mode or similar, then:</li>
+ <ul>
+  <li>Edit /etc/fstab, change "UUID=...." on the line for "/" to "/dev/sda3"</li>
+  <li>Edit your Grub config (usually in /etc/defaults/grub or /boot/grub/menu.lst) and:</li>
+  <ul>
+   <li>Forgot what to edit in /etc/defaults/grub, but it should be pretty easy to add any additional boot parameters here</li>
+   <li>In /boot/grub/menu.lst replace "root=UUID=...." with "root=/dev/sda3"</li>
+  </ul>
+  <li>Depending on your distribution and Grub version, you might need to run one or more of the following:</li>
+  <ul>
+   <li>update-grub</li>
+   <li>grub-install /dev/sda</li>
+  </ul>
+ </ul>
+</ul>
+<p>
+If you find any other useful tips for installing Linux/*BSD/similar on your Macs, let me know and I might consider adding them here.
+</p>

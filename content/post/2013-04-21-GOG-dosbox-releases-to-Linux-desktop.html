@@ -1,0 +1,93 @@
+---
+layout: post
+title: GOG.com dosbox releases to Linux desktop
+date: "2013-04-21"
+---
+
+<h4>What is this?</h4>
+<p><a href="http://GOG.com" title="Good Old Games">GOG.com</a> is an online store that, among other things, sells a lot of old PC games that are distributed for use with <a href="http://dosbox.com">Dosbox</a>. The games come with a Windows (sometimes also Mac) installer, but nothing for Linux.</p>
+<p>Getting these games to run on Linux sometimes takes a bit more effort, if they're not designed to be run with Dosbox, but when they are it should not be very difficult to get them running. This is what this page is about.</p>
+
+<h4>GOG 2 Linux</h4>
+<p>To make it simpler for me to set up those dosbox powered games for playing in Linux with menu entries and everything, I made a small script.</p>
+<p>Put the contents below to a file called "gog2linux" and place that file either in your local bin folder (if you know what that is), /usr/local/bin or /usr/bin. Don't forget to run "chmod +x gog2linux" to add execution permissions for it.</p>
+{{< highlight bash >}}
+#!/usr/bin/env bash
+
+dosbox=$(which dosbox)
+if [ -z "${dosbox}" ]; then
+	echo "Could not find dosbox in path"
+	exit 1
+fi
+
+# If given a parameter, use that as target
+if [ ! -z "$1" ]; then
+	TARGET=$(readlink -f -- "${1}")
+# If not, use current working directory
+else
+	TARGET=$(pwd)
+fi
+
+echo "Probing ${TARGET}"
+
+# Get all dosbox configs in the destination folder
+foundConfigs=$(ls "${TARGET}/"dosbox*.conf 2>/dev/null)
+if [ ! -z "${foundConfigs}" ]; then
+	IFS=$'\n'
+	for conf in $foundConfigs; do
+		# Parse the conf file name and app name
+		confFile=$(basename "${conf}")
+		appName=$(echo "${confFile}" | sed -e 's@^dosbox@@g' | sed -e 's@\.conf$@@g')
+
+		echo "Found ${confFile} for ${appName}"
+
+		# Create a simple BASH launcher
+		launcher="#!/usr/bin/env bash
+cd '${TARGET}'
+'${dosbox}' -conf '${confFile}'
+"
+		dst="${TARGET}/${appName}.sh"
+		echo "${launcher}" > "${dst}"
+		chmod +x "${dst}"
+		echo "Created launcher ${dst}"
+
+		# Create a .desktop -file
+		desktop="[Desktop Entry]
+Name=${appName}
+Exec=\"${TARGET}/${appName}.sh\"
+Icon=${TARGET}/gfw_high.ico
+Terminal=false
+Type=Application
+Categories=Game;X-Games;
+"
+		dst="${HOME}/.local/share/applications/${appName}.desktop"
+		echo "${desktop}" > "${dst}"
+		echo "Created .desktop -file ${dst}"
+
+	done
+else
+	echo "No files matching dosbox*.conf in ${TARGET}"
+	exit 1
+fi
+{{< /highlight >}}
+
+<h4>Usage</h4>
+<p>So how do you use it then? Well first you need to install dosbox, make sure you can run "dosbox" from the CLI. Then get the GOG.com installer for the game you want, and either extract that in Windows, or with wine, or whatever you like.</p>
+<p>After that's done, you can either:</p>
+<ul>
+	<li>Run "gog2linux /path/to/game"</li>
+	<li>Go to the extracted folder and run "gog2linux"</li>
+</ul>
+<p>This will probe the folder for any GOG.com dosbox configurations and create a BASH launcher script, as well as a .desktop file for the game so.</p>
+<p>By default it is added to the "Games" -category, so you should find the new game in the Games section of the menu of whatever desktop environment you are using. Some environments might require something to be done to rescan for the .desktop files first.</p>
+<p>Do this for all your GOG.com games and you're all done.</p>
+<h4>Example output</h4>
+<code style="display: block;">
+$ cd /home/lietu/Games/The\ Complete\ Ultima\ VII/Ultima7/<br />
+$ gog2linux<br />
+Probing /home/lietu/Games/The Complete Ultima VII/Ultima7<br />
+Found dosboxULTIMA7.conf for ULTIMA7<br />
+Created launcher /home/lietu/Games/The Complete Ultima VII/Ultima7/ULTIMA7.sh<br />
+Created .desktop -file /home/lietu/.local/share/applications/ULTIMA7.desktop<br />
+$
+</code>

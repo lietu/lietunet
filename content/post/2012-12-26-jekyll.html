@@ -1,0 +1,75 @@
+---
+
+layout: post
+title: Jekyll
+date: "2012-12-26"
+
+---
+
+
+<p>Jekyll is a tool that can be used to build static HTML websites using a HTML template engine etc., however it's not perfect by itself, and the documentation for the plugins is rather crappy at times.</p>
+<p>Unfortunately, you will need to install ruby (including -devel packages) and do whatever you need to do to get RubyGems installer.</p>
+<p>More about Jekyll: <a href="http://jekyllrb.com/">http://jekyllrb.com/</a></p>
+
+<h4>Jekyll Asset Pipeline</h4>
+<p>Definitely worth installing is jekyll-asset-pipeline, it makes sure your CSS and JS files are combined and compressed, as well as making sure (with a little help) that LESS, SASS, CoffeeScript etc. is converted prior to this.</p>
+<p>To get this working, read up on&nbsp;<a href="https://github.com/matthodan/jekyll-asset-pipeline/">https://github.com/matthodan/jekyll-asset-pipeline/</a></p>
+
+<h5>Jekyll Asset Pipeline and LESS</h5>
+<p>To get LESS compilation working with Jekyll Asset Pipeline, you need to add some code to the jekyll_asset_pipeline.rb file you already created. I tried to look for a ready solution, but eventually ended up combining two-three solutions into something that works.</p>
+<p>It uses the node.js lessc compiler to process the files and is written in a fairly unoptimal way in general, because I haven't got a clue of how to write Ruby and this was the first thing that I got to work.</p>
+<p>This is the complete contents of that file for me now:</p>
+
+{{< highlight ruby >}}
+require 'jekyll_asset_pipeline'
+
+# Additions to jekyll-asset-pipeline
+module JekyllAssetPipeline
+
+	# Compile LESS to CSS
+	class LESSConverter < JekyllAssetPipeline::Converter
+
+		# Dependencies
+		require 'shellwords'
+
+		# What filetypes we're interested in
+		def self.filetype
+			'.less'
+		end
+
+		# Function to convert input at @content to output via return
+		def convert
+
+			# Build a shell command to convert via lessc
+			# echo "less content" | lessc -
+			command = [
+				"echo",
+				Shellwords.escape(@content),
+				"|",
+				"lessc",
+				"-x",
+				"-O2",
+				"-"
+			].join(" ")
+
+			# Execute the command and return stdout data
+			return `#{command}`
+		end
+
+	end
+
+	# Compress JavaScript
+	class JavaScriptCompressor < JekyllAssetPipeline::Compressor
+		require 'closure-compiler'
+
+		def self.filetype
+			'.js'
+		end
+
+		def compress
+			return Closure::Compiler.new.compile(@content)
+		end
+	end
+end
+{{< /highlight >}}
+
