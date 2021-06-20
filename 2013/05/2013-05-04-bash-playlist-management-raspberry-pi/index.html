@@ -1,0 +1,116 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content="noodp"><title>BASH playlist management for your Raspberry Pi - Janne "Lietu" Enberg</title><meta name=twitter:card content="summary_large_image"><meta name=twitter:creator content="@lietux"><meta name=twitter:title content><meta name=twitter:description content><meta name=Description content><meta property="og:title" content="BASH playlist management for your Raspberry Pi"><meta property="og:description" content="IntroductionI just recently got a Raspberry Pi, which is a decent piece of hardware, but the fact that it can't really do video playback using any other player than omxplayer left me annoyed. Omxplayer isn't a very nice player, most annoyingly it's missing playlist functionality.
+To make the Raspberry Pi a bit more useful for me, I decided to make my own playlist manager around omxplayer, and this is it."><meta property="og:type" content="article"><meta property="og:url" content="https://lietu.net/2013/05/2013-05-04-bash-playlist-management-raspberry-pi/"><meta property="article:section" content="post"><meta property="article:published_time" content="2013-05-04T00:00:00+00:00"><meta property="article:modified_time" content="2013-05-04T00:00:00+00:00"><meta name=application-name content="Janne &#34;Lietu&#34; Enberg"><meta name=apple-mobile-web-app-title content="Janne &#34;Lietu&#34; Enberg"><link rel="shortcut icon" type=image/x-icon href=/favicon.ico><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=icon type=image/png sizes=192x192 href=/android-chrome-192x192.png><link rel=icon type=image/png sizes=512x512 href=/android-chrome-512x512.png><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=manifest href=/site.webmanifest><link rel=canonical href=https://lietu.net/2013/05/2013-05-04-bash-playlist-management-raspberry-pi/><link rel=stylesheet href=/lib/normalize/normalize.min.css><link rel=stylesheet href=/lib/prismjs/prism.css><link rel=stylesheet href=/css/style.min.css><link rel=stylesheet href=/lib/animate/animate.min.css><script type=application/ld+json>{"@context":"http://schema.org","@type":"BlogPosting","headline":"BASH playlist management for your Raspberry Pi","inLanguage":"en","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/lietu.net\/2013\/05\/2013-05-04-bash-playlist-management-raspberry-pi\/"},"genre":"post","wordCount":681,"url":"https:\/\/lietu.net\/2013\/05\/2013-05-04-bash-playlist-management-raspberry-pi\/","datePublished":"2013-05-04T00:00:00+00:00","dateModified":"2013-05-04T00:00:00+00:00","description":""}</script></head><body data-header-desktop data-header-mobile><script>(window.localStorage&&localStorage.getItem('theme')?localStorage.getItem('theme')==='dark':'dark'==='auto'?window.matchMedia('(prefers-color-scheme: dark)').matches:'dark'==='dark')&&document.body.setAttribute('theme','dark')</script><div id=mask></div><div class=wrapper><header><div class="desktop header" id=header-desktop><div class=header-wrapper><div class=header-title><a href=/ title='Janne "Lietu" Enberg' class="header-logo logo-svg">Janne "Lietu" Enberg</a></div><div class=menu><nav><h2 class=display-hidden>Основная навигация</h2><ul class=menu-inner><li><a class=menu-item href=/post/>Posts</a></li></ul></nav><span class="menu-item delimiter"></span><a href=javascript:void(0); class="menu-item theme-switch" title="Switch Theme"><span class="svg-icon icon-moon"></span></a></div></div></div><div class="mobile header" id=header-mobile><div class=header-container><div class=header-wrapper><div class=header-title><a href=/ title='Janne "Lietu" Enberg' class=header-logo>Janne "Lietu" Enberg</a></div><div class=menu-toggle id=menu-toggle-mobile><span></span><span></span><span></span></div></div><div class=menu id=menu-mobile><nav><h2 class=display-hidden>Основная навигация</h2><ul><li><a class=menu-item href=/post/ title>Posts</a></li></ul></nav><a href=javascript:void(0); class="menu-item theme-switch" title="Switch Theme"><span class="svg-icon icon-moon"></span></a></div></div></div></header><main class=main><div class=container><div class="page single special"><h1 class="single-title pulse faster">BASH playlist management for your Raspberry Pi</h1><div class=content id=content><h4>Introduction</h4><p>I just recently got a <a href=http://www.raspberrypi.org/>Raspberry Pi</a>, which is a decent piece of hardware, but the fact that it can't really do video playback using any other player than omxplayer left me annoyed. Omxplayer isn't a very nice player, most annoyingly it's missing playlist functionality.</p><p>To make the Raspberry Pi a bit more useful for me, I decided to make my own playlist manager around omxplayer, and this is it.</p><h4>What to do</h4><h5>Set up a local bin folder (optional but recommended)</h5><p>Why would you want to do this? Because you shouldn't be modifying the system folders with your own scripts etc. .. if you feel otherwise, feel free to modify your system any way you want.</p><p>Run the following commands on your BASH terminal to create a ~/bin and add it to your path:</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=c1># Create the local bin folder</span>
+mkdir <span class=s2>&#34;</span><span class=si>${</span><span class=nv>HOME</span><span class=si>}</span><span class=s2>/bin&#34;</span>
+
+<span class=c1># Set decent permissions on it</span>
+chmod <span class=m>0700</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>HOME</span><span class=si>}</span><span class=s2>/bin&#34;</span>
+
+<span class=c1># Add it to your PATH in future sessions</span>
+<span class=nb>echo</span> -e <span class=s1>&#39;\nPATH=&#34;${PATH}:${HOME}/bin&#34;&#39;</span> &gt;&gt; <span class=s2>&#34;</span><span class=si>${</span><span class=nv>HOME</span><span class=si>}</span><span class=s2>/.bashrc&#34;</span>
+
+<span class=c1># And enable it in the current one</span>
+<span class=nb>export</span> <span class=nv>PATH</span><span class=o>=</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>PATH</span><span class=si>}</span><span class=s2>:</span><span class=si>${</span><span class=nv>HOME</span><span class=si>}</span><span class=s2>/bin&#34;</span></code></pre></div><p>If you have other terminal sessions open and want to activate the local bin on them, just run the last line from that on them..</p><h5>Create the scripts</h5><p>Create the following two scripts in your local bin, or system bin folder if you didn't create a local bin..</p><p><b>process_playlist</b></p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=cp>#!/usr/bin/env bash
+</span><span class=cp></span><span class=c1>#</span>
+<span class=c1># Plays videos from playlist</span>
+<span class=c1>#</span>
+<span class=c1># Copyright © 2013 Janne Enberg http://lietu.net/</span>
+<span class=c1># This work is free. You can redistribute it and/or modify it under the</span>
+<span class=c1># terms of the Do What The Fuck You Want To Public License, Version 2,</span>
+<span class=c1># as published by Sam Hocevar. See http://www.wtfpl.net/ for more details.</span>
+<span class=c1>#</span>
+
+<span class=c1># If you want to switch omxplayer to something else, or add parameters, use these</span>
+<span class=nv>PLAYER</span><span class=o>=</span><span class=s2>&#34;omxplayer&#34;</span>
+<span class=nv>PLAYER_OPTIONS</span><span class=o>=</span><span class=s2>&#34;&#34;</span>
+
+<span class=c1># Where is the playlist</span>
+<span class=nv>PLAYLIST_FILE</span><span class=o>=</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>HOME</span><span class=si>}</span><span class=s2>/.playlist&#34;</span>
+
+<span class=c1># Process playlist contents</span>
+<span class=k>while</span> <span class=o>[</span> <span class=nb>true</span> <span class=o>]</span><span class=p>;</span> <span class=k>do</span>
+        <span class=c1># Sleep a bit so it&#39;s possible to kill this</span>
+        sleep <span class=m>1</span>
+
+        <span class=c1># Do nothing if the playlist doesn&#39;t exist</span>
+        <span class=k>if</span> <span class=o>[</span> ! -f <span class=s2>&#34;</span><span class=si>${</span><span class=nv>PLAYLIST_FILE</span><span class=si>}</span><span class=s2>&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+                <span class=nb>echo</span> <span class=s2>&#34;Playlist file </span><span class=si>${</span><span class=nv>PLAYLIST_FILE</span><span class=si>}</span><span class=s2> not found&#34;</span>
+                <span class=k>continue</span>
+        <span class=k>fi</span>
+
+        <span class=c1># Get the top of the playlist</span>
+        <span class=nv>file</span><span class=o>=</span><span class=k>$(</span>cat <span class=s2>&#34;</span><span class=si>${</span><span class=nv>PLAYLIST_FILE</span><span class=si>}</span><span class=s2>&#34;</span> <span class=p>|</span> head -n1<span class=k>)</span>
+
+        <span class=c1># And strip it off the playlist file</span>
+        cat <span class=s2>&#34;</span><span class=si>${</span><span class=nv>PLAYLIST_FILE</span><span class=si>}</span><span class=s2>&#34;</span> <span class=p>|</span> tail -n+2 &gt; <span class=s2>&#34;</span><span class=si>${</span><span class=nv>PLAYLIST_FILE</span><span class=si>}</span><span class=s2>.new&#34;</span>
+        mv <span class=s2>&#34;</span><span class=si>${</span><span class=nv>PLAYLIST_FILE</span><span class=si>}</span><span class=s2>.new&#34;</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>PLAYLIST_FILE</span><span class=si>}</span><span class=s2>&#34;</span>
+
+        <span class=c1># Skip if this is empty</span>
+        <span class=k>if</span> <span class=o>[</span> -z <span class=s2>&#34;</span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=s2>&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+                <span class=nb>echo</span> <span class=s2>&#34;Playlist empty or bumped into an empty entry for some reason&#34;</span>
+                <span class=k>continue</span>
+        <span class=k>fi</span>
+
+        <span class=c1># Check that the file exists</span>
+        <span class=k>if</span> <span class=o>[</span> ! -f <span class=s2>&#34;</span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=s2>&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+                <span class=nb>echo</span> <span class=s2>&#34;Playlist entry </span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=s2> not found&#34;</span>
+                <span class=k>continue</span>
+        <span class=k>fi</span>
+
+        <span class=nb>echo</span>
+        <span class=nb>echo</span> <span class=s2>&#34;Playing </span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=s2> ...&#34;</span>
+        <span class=nb>echo</span>
+
+        <span class=s2>&#34;</span><span class=si>${</span><span class=nv>PLAYER</span><span class=si>}</span><span class=s2>&#34;</span> <span class=si>${</span><span class=nv>PLAYER_OPTIONS</span><span class=si>}</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=s2>&#34;</span>
+
+        <span class=nb>echo</span>
+        <span class=nb>echo</span> <span class=s2>&#34;Playback complete, continuing to next item on playlist.&#34;</span>
+        <span class=nb>echo</span>
+<span class=k>done</span></code></pre></div><p><b>playlist</b></p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=cp>#!/usr/bin/env bash
+</span><span class=cp></span><span class=c1>#</span>
+<span class=c1># Add files to playlist</span>
+<span class=c1>#</span>
+<span class=c1># Copyright © 2013 Janne Enberg http://lietu.net/</span>
+<span class=c1># This work is free. You can redistribute it and/or modify it under the</span>
+<span class=c1># terms of the Do What The Fuck You Want To Public License, Version 2,</span>
+<span class=c1># as published by Sam Hocevar. See http://www.wtfpl.net/ for more details.</span>
+<span class=c1>#</span>
+
+<span class=c1># Where is the playlist</span>
+<span class=nv>PLAYLIST_FILE</span><span class=o>=</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>HOME</span><span class=si>}</span><span class=s2>/.playlist&#34;</span>
+
+
+<span class=c1># Check for proper usage</span>
+<span class=k>if</span> <span class=o>[</span> <span class=nv>$#</span> -eq <span class=m>0</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+        <span class=nb>echo</span> <span class=s2>&#34;
+</span><span class=s2>Adds files to the system playlist (</span><span class=si>${</span><span class=nv>PLAYLIST_FILE</span><span class=si>}</span><span class=s2>)
+</span><span class=s2>
+</span><span class=s2>Usage:
+</span><span class=s2>  playlist *.avi
+</span><span class=s2>  playlist /path/to/futurama/*/*
+</span><span class=s2>
+</span><span class=s2>&#34;</span>
+
+        <span class=nb>exit</span> <span class=m>1</span>
+<span class=k>fi</span>
+
+<span class=c1># Loop through arguments given</span>
+<span class=k>for</span> entry in <span class=s2>&#34;</span><span class=nv>$@</span><span class=s2>&#34;</span><span class=p>;</span> <span class=k>do</span>
+        <span class=k>if</span> <span class=o>[</span> ! -f <span class=s2>&#34;</span><span class=si>${</span><span class=nv>entry</span><span class=si>}</span><span class=s2>&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+                <span class=nb>echo</span> <span class=s2>&#34;Invalid entry, </span><span class=si>${</span><span class=nv>entry</span><span class=si>}</span><span class=s2> .. skipping&#34;</span>
+                <span class=k>continue</span>
+        <span class=k>fi</span>
+
+        <span class=c1># Get full path to the file</span>
+        <span class=nv>fullPath</span><span class=o>=</span><span class=k>$(</span>readlink -f -- <span class=s2>&#34;</span><span class=si>${</span><span class=nv>entry</span><span class=si>}</span><span class=s2>&#34;</span><span class=k>)</span>
+
+        <span class=c1># Append file to playlist</span>
+        <span class=nb>echo</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>fullPath</span><span class=si>}</span><span class=s2>&#34;</span> &gt;&gt; <span class=s2>&#34;</span><span class=si>${</span><span class=nv>PLAYLIST_FILE</span><span class=si>}</span><span class=s2>&#34;</span>
+        <span class=nb>echo</span> <span class=s2>&#34;Added </span><span class=si>${</span><span class=nv>fullPath</span><span class=si>}</span><span class=s2> to system playlist&#34;</span>
+<span class=k>done</span></code></pre></div><p>It is pretty important that there is nothing in the file before the #!, no new lines, no nothing. Otherwise the formatting doesn't matter much...</p><p>Make the scripts executable:</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash>chmod +x <span class=s2>&#34;</span><span class=si>${</span><span class=nv>HOME</span><span class=si>}</span><span class=s2>/bin/&#34;</span>*</code></pre></div><p>To make the playlist processing script appear in your menus, you can put the following contents in ~/.local/share/applications/process_playlist.desktop</p><div class=highlight><pre class=chroma><code class=language-ini data-lang=ini><span class=k>[Desktop Entry]</span>
+<span class=na>Type</span><span class=o>=</span><span class=s>Application</span>
+<span class=na>Name</span><span class=o>=</span><span class=s>Process system playlist</span>
+<span class=na>Exec</span><span class=o>=</span><span class=s>process_playlist</span>
+<span class=na>Terminal</span><span class=o>=</span><span class=s>True</span>
+<span class=na>Categories</span><span class=o>=</span><span class=s>AudioVideo;Player;</span>
+<span class=na>Icon</span><span class=o>=</span><span class=s>/usr/share/icons/nuoveXT2/96x96/categories/applications-multimedia.png</span></code></pre></div><h5>Use it</h5><p><ol><li>Start process_playlist from a terminal or the menu item.</li><li>Find a bunch of media files to add to your playlist, e.g. /path/to/*.avi and to start playing them run: playlist /path/to/*.avi</li></ol></p></div></div></div></main><footer class=footer><div class=footer-container><div class=footer-line>Powered by <a href=https://gohugo.io/ target=_blank rel="noopener noreffer" title="Hugo 0.83.1">Hugo</a> | Theme - <a href="https://ublogger.netlify.app/?utm_source=https://lietu.net/&utm_medium=footer&utm_campaign=config&utm_term=2.0.1" target=_blank title="uBlogger 2.0.1">uBlogger</a></div><div class=footer-line><i class="svg-icon icon-copyright"></i><span>2021</span></div></div></footer></div><aside id=fixed-buttons><a href=# id=back-to-top class=fixed-button title="Back to Top"><i class="svg-icon icon-arrow-up"></i>
+</a><a href=# id=view-comments class=fixed-button title="View Comments"><i class="svg-icon icon-comments-fixed"></i></a></aside><script src=/lib/smooth-scroll/smooth-scroll.min.js></script><script src=/lib/clipboard/clipboard.min.js></script><script>window.config={code:{copyTitle:"Copy to clipboard",maxShownLines:10},comment:{}}</script><script src=/js/theme.min.js></script></body></html>

@@ -1,0 +1,54 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content="noodp"><title>Jekyll - Janne "Lietu" Enberg</title><meta name=twitter:card content="summary_large_image"><meta name=twitter:creator content="@lietux"><meta name=twitter:title content><meta name=twitter:description content><meta name=Description content><meta property="og:title" content="Jekyll"><meta property="og:description" content="Jekyll is a tool that can be used to build static HTML websites using a HTML template engine etc., however it's not perfect by itself, and the documentation for the plugins is rather crappy at times.
+Unfortunately, you will need to install ruby (including -devel packages) and do whatever you need to do to get RubyGems installer.
+More about Jekyll: http://jekyllrb.com/
+Jekyll Asset PipelineDefinitely worth installing is jekyll-asset-pipeline, it makes sure your CSS and JS files are combined and compressed, as well as making sure (with a little help) that LESS, SASS, CoffeeScript etc."><meta property="og:type" content="article"><meta property="og:url" content="https://lietu.net/2012/12/2012-12-26-jekyll/"><meta property="article:section" content="post"><meta property="article:published_time" content="2012-12-26T00:00:00+00:00"><meta property="article:modified_time" content="2012-12-26T00:00:00+00:00"><meta name=application-name content="Janne &#34;Lietu&#34; Enberg"><meta name=apple-mobile-web-app-title content="Janne &#34;Lietu&#34; Enberg"><link rel="shortcut icon" type=image/x-icon href=/favicon.ico><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=icon type=image/png sizes=192x192 href=/android-chrome-192x192.png><link rel=icon type=image/png sizes=512x512 href=/android-chrome-512x512.png><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=manifest href=/site.webmanifest><link rel=canonical href=https://lietu.net/2012/12/2012-12-26-jekyll/><link rel=stylesheet href=/lib/normalize/normalize.min.css><link rel=stylesheet href=/lib/prismjs/prism.css><link rel=stylesheet href=/css/style.min.css><link rel=stylesheet href=/lib/animate/animate.min.css><script type=application/ld+json>{"@context":"http://schema.org","@type":"BlogPosting","headline":"Jekyll","inLanguage":"en","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/lietu.net\/2012\/12\/2012-12-26-jekyll\/"},"genre":"post","wordCount":310,"url":"https:\/\/lietu.net\/2012\/12\/2012-12-26-jekyll\/","datePublished":"2012-12-26T00:00:00+00:00","dateModified":"2012-12-26T00:00:00+00:00","description":""}</script></head><body data-header-desktop data-header-mobile><script>(window.localStorage&&localStorage.getItem('theme')?localStorage.getItem('theme')==='dark':'dark'==='auto'?window.matchMedia('(prefers-color-scheme: dark)').matches:'dark'==='dark')&&document.body.setAttribute('theme','dark')</script><div id=mask></div><div class=wrapper><header><div class="desktop header" id=header-desktop><div class=header-wrapper><div class=header-title><a href=/ title='Janne "Lietu" Enberg' class="header-logo logo-svg">Janne "Lietu" Enberg</a></div><div class=menu><nav><h2 class=display-hidden>Основная навигация</h2><ul class=menu-inner><li><a class=menu-item href=/post/>Posts</a></li></ul></nav><span class="menu-item delimiter"></span><a href=javascript:void(0); class="menu-item theme-switch" title="Switch Theme"><span class="svg-icon icon-moon"></span></a></div></div></div><div class="mobile header" id=header-mobile><div class=header-container><div class=header-wrapper><div class=header-title><a href=/ title='Janne "Lietu" Enberg' class=header-logo>Janne "Lietu" Enberg</a></div><div class=menu-toggle id=menu-toggle-mobile><span></span><span></span><span></span></div></div><div class=menu id=menu-mobile><nav><h2 class=display-hidden>Основная навигация</h2><ul><li><a class=menu-item href=/post/ title>Posts</a></li></ul></nav><a href=javascript:void(0); class="menu-item theme-switch" title="Switch Theme"><span class="svg-icon icon-moon"></span></a></div></div></div></header><main class=main><div class=container><div class="page single special"><h1 class="single-title pulse faster">Jekyll</h1><div class=content id=content><p>Jekyll is a tool that can be used to build static HTML websites using a HTML template engine etc., however it's not perfect by itself, and the documentation for the plugins is rather crappy at times.</p><p>Unfortunately, you will need to install ruby (including -devel packages) and do whatever you need to do to get RubyGems installer.</p><p>More about Jekyll: <a href=http://jekyllrb.com/>http://jekyllrb.com/</a></p><h4>Jekyll Asset Pipeline</h4><p>Definitely worth installing is jekyll-asset-pipeline, it makes sure your CSS and JS files are combined and compressed, as well as making sure (with a little help) that LESS, SASS, CoffeeScript etc. is converted prior to this.</p><p>To get this working, read up on&nbsp;<a href=https://github.com/matthodan/jekyll-asset-pipeline/>https://github.com/matthodan/jekyll-asset-pipeline/</a></p><h5>Jekyll Asset Pipeline and LESS</h5><p>To get LESS compilation working with Jekyll Asset Pipeline, you need to add some code to the jekyll_asset_pipeline.rb file you already created. I tried to look for a ready solution, but eventually ended up combining two-three solutions into something that works.</p><p>It uses the node.js lessc compiler to process the files and is written in a fairly unoptimal way in general, because I haven't got a clue of how to write Ruby and this was the first thing that I got to work.</p><p>This is the complete contents of that file for me now:</p><div class=highlight><pre class=chroma><code class=language-ruby data-lang=ruby><span class=nb>require</span> <span class=s1>&#39;jekyll_asset_pipeline&#39;</span>
+
+<span class=c1># Additions to jekyll-asset-pipeline</span>
+<span class=k>module</span> <span class=nn>JekyllAssetPipeline</span>
+
+	<span class=c1># Compile LESS to CSS</span>
+	<span class=k>class</span> <span class=nc>LESSConverter</span> <span class=o>&lt;</span> <span class=no>JekyllAssetPipeline</span><span class=o>::</span><span class=no>Converter</span>
+
+		<span class=c1># Dependencies</span>
+		<span class=nb>require</span> <span class=s1>&#39;shellwords&#39;</span>
+
+		<span class=c1># What filetypes we&#39;re interested in</span>
+		<span class=k>def</span> <span class=nc>self</span><span class=o>.</span><span class=nf>filetype</span>
+			<span class=s1>&#39;.less&#39;</span>
+		<span class=k>end</span>
+
+		<span class=c1># Function to convert input at @content to output via return</span>
+		<span class=k>def</span> <span class=nf>convert</span>
+
+			<span class=c1># Build a shell command to convert via lessc</span>
+			<span class=c1># echo &#34;less content&#34; | lessc -</span>
+			<span class=n>command</span> <span class=o>=</span> <span class=o>[</span>
+				<span class=s2>&#34;echo&#34;</span><span class=p>,</span>
+				<span class=no>Shellwords</span><span class=o>.</span><span class=n>escape</span><span class=p>(</span><span class=vi>@content</span><span class=p>),</span>
+				<span class=s2>&#34;|&#34;</span><span class=p>,</span>
+				<span class=s2>&#34;lessc&#34;</span><span class=p>,</span>
+				<span class=s2>&#34;-x&#34;</span><span class=p>,</span>
+				<span class=s2>&#34;-O2&#34;</span><span class=p>,</span>
+				<span class=s2>&#34;-&#34;</span>
+			<span class=o>].</span><span class=n>join</span><span class=p>(</span><span class=s2>&#34; &#34;</span><span class=p>)</span>
+
+			<span class=c1># Execute the command and return stdout data</span>
+			<span class=k>return</span> <span class=sb>`</span><span class=si>#{</span><span class=n>command</span><span class=si>}</span><span class=sb>`</span>
+		<span class=k>end</span>
+
+	<span class=k>end</span>
+
+	<span class=c1># Compress JavaScript</span>
+	<span class=k>class</span> <span class=nc>JavaScriptCompressor</span> <span class=o>&lt;</span> <span class=no>JekyllAssetPipeline</span><span class=o>::</span><span class=no>Compressor</span>
+		<span class=nb>require</span> <span class=s1>&#39;closure-compiler&#39;</span>
+
+		<span class=k>def</span> <span class=nc>self</span><span class=o>.</span><span class=nf>filetype</span>
+			<span class=s1>&#39;.js&#39;</span>
+		<span class=k>end</span>
+
+		<span class=k>def</span> <span class=nf>compress</span>
+			<span class=k>return</span> <span class=no>Closure</span><span class=o>::</span><span class=no>Compiler</span><span class=o>.</span><span class=n>new</span><span class=o>.</span><span class=n>compile</span><span class=p>(</span><span class=vi>@content</span><span class=p>)</span>
+		<span class=k>end</span>
+	<span class=k>end</span>
+<span class=k>end</span></code></pre></div></div></div></div></main><footer class=footer><div class=footer-container><div class=footer-line>Powered by <a href=https://gohugo.io/ target=_blank rel="noopener noreffer" title="Hugo 0.83.1">Hugo</a> | Theme - <a href="https://ublogger.netlify.app/?utm_source=https://lietu.net/&utm_medium=footer&utm_campaign=config&utm_term=2.0.1" target=_blank title="uBlogger 2.0.1">uBlogger</a></div><div class=footer-line><i class="svg-icon icon-copyright"></i><span>2021</span></div></div></footer></div><aside id=fixed-buttons><a href=# id=back-to-top class=fixed-button title="Back to Top"><i class="svg-icon icon-arrow-up"></i>
+</a><a href=# id=view-comments class=fixed-button title="View Comments"><i class="svg-icon icon-comments-fixed"></i></a></aside><script src=/lib/smooth-scroll/smooth-scroll.min.js></script><script src=/lib/clipboard/clipboard.min.js></script><script>window.config={code:{copyTitle:"Copy to clipboard",maxShownLines:10},comment:{}}</script><script src=/js/theme.min.js></script></body></html>

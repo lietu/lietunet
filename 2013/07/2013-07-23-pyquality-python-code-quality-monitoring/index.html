@@ -1,0 +1,273 @@
+<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content="noodp"><title>Python code quality monitoring - pyquality - Janne "Lietu" Enberg</title><meta name=twitter:card content="summary_large_image"><meta name=twitter:creator content="@lietux"><meta name=twitter:title content><meta name=twitter:description content><meta name=Description content><meta property="og:title" content="Python code quality monitoring - pyquality"><meta property="og:description" content="What is this?Python has excellent coding standards that everyone should follow (PEP-8) and excellent tool to check for standards-compliancy (pep8). There's also a good tool for checking various errors (e.g. unused imports) called pyflakes.
+Running these tools manually can easily become too much of a chore, and mass running them after doing a bunch of changes can end up with a lot of issues to be fixed at once making it a chore to fix all the little issues."><meta property="og:type" content="article"><meta property="og:url" content="https://lietu.net/2013/07/2013-07-23-pyquality-python-code-quality-monitoring/"><meta property="article:section" content="post"><meta property="article:published_time" content="2013-07-23T00:00:00+00:00"><meta property="article:modified_time" content="2013-07-23T00:00:00+00:00"><meta name=application-name content="Janne &#34;Lietu&#34; Enberg"><meta name=apple-mobile-web-app-title content="Janne &#34;Lietu&#34; Enberg"><link rel="shortcut icon" type=image/x-icon href=/favicon.ico><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=icon type=image/png sizes=192x192 href=/android-chrome-192x192.png><link rel=icon type=image/png sizes=512x512 href=/android-chrome-512x512.png><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=manifest href=/site.webmanifest><link rel=canonical href=https://lietu.net/2013/07/2013-07-23-pyquality-python-code-quality-monitoring/><link rel=stylesheet href=/lib/normalize/normalize.min.css><link rel=stylesheet href=/lib/prismjs/prism.css><link rel=stylesheet href=/css/style.min.css><link rel=stylesheet href=/lib/animate/animate.min.css><script type=application/ld+json>{"@context":"http://schema.org","@type":"BlogPosting","headline":"Python code quality monitoring - pyquality","inLanguage":"en","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/lietu.net\/2013\/07\/2013-07-23-pyquality-python-code-quality-monitoring\/"},"genre":"post","wordCount":1128,"url":"https:\/\/lietu.net\/2013\/07\/2013-07-23-pyquality-python-code-quality-monitoring\/","datePublished":"2013-07-23T00:00:00+00:00","dateModified":"2013-07-23T00:00:00+00:00","description":""}</script></head><body data-header-desktop data-header-mobile><script>(window.localStorage&&localStorage.getItem('theme')?localStorage.getItem('theme')==='dark':'dark'==='auto'?window.matchMedia('(prefers-color-scheme: dark)').matches:'dark'==='dark')&&document.body.setAttribute('theme','dark')</script><div id=mask></div><div class=wrapper><header><div class="desktop header" id=header-desktop><div class=header-wrapper><div class=header-title><a href=/ title='Janne "Lietu" Enberg' class="header-logo logo-svg">Janne "Lietu" Enberg</a></div><div class=menu><nav><h2 class=display-hidden>Основная навигация</h2><ul class=menu-inner><li><a class=menu-item href=/post/>Posts</a></li></ul></nav><span class="menu-item delimiter"></span><a href=javascript:void(0); class="menu-item theme-switch" title="Switch Theme"><span class="svg-icon icon-moon"></span></a></div></div></div><div class="mobile header" id=header-mobile><div class=header-container><div class=header-wrapper><div class=header-title><a href=/ title='Janne "Lietu" Enberg' class=header-logo>Janne "Lietu" Enberg</a></div><div class=menu-toggle id=menu-toggle-mobile><span></span><span></span><span></span></div></div><div class=menu id=menu-mobile><nav><h2 class=display-hidden>Основная навигация</h2><ul><li><a class=menu-item href=/post/ title>Posts</a></li></ul></nav><a href=javascript:void(0); class="menu-item theme-switch" title="Switch Theme"><span class="svg-icon icon-moon"></span></a></div></div></div></header><main class=main><div class=container><div class="page single special"><h1 class="single-title pulse faster">Python code quality monitoring - pyquality</h1><div class=content id=content><h4>What is this?</h4><p>Python has excellent coding standards that everyone should follow (PEP-8) and excellent tool to check for standards-compliancy (pep8). There's also a good tool for checking various errors (e.g. unused imports) called pyflakes.</p><p>Running these tools manually can easily become too much of a chore, and mass running them after doing a bunch of changes can end up with a lot of issues to be fixed at once making it a chore to fix all the little issues.</p><p>To make following PEP-8 and keeping the code clean fairly effortless, I made a tool to monitor code quality in "real-time". It checks for changes (md5sum by default) once a second, if new files or changed files are detected, it immediately runs both pep8 and pyflakes on the file and clearly highlights any errors discovered.</p><h4>pyquality</h4><p>Put the contents below to a file called "pyquality" and place that file either in your local bin folder (if you know what that is), /usr/local/bin or /usr/bin. Don't forget to run "chmod +x pyquality" to add execution permissions for it.</p><div class=highlight><pre class=chroma><code class=language-bash data-lang=bash><span class=cp>#!/usr/bin/env bash
+</span><span class=cp></span><span class=c1>#</span>
+<span class=c1># pyquality - Tool to monitor python code quality</span>
+<span class=c1>#</span>
+<span class=c1># Makes sure you follow PEP-8, and analyzes programs for various errors,</span>
+<span class=c1># with the help of pep8 and pyflakes.</span>
+<span class=c1>#</span>
+<span class=c1># Run &#34;pip install pep8 pyflakes&#34; before trying to use this.</span>
+<span class=c1>#</span>
+<span class=c1>#</span>
+<span class=c1># Copyright (C) 2013  Janne Enberg &lt;&gt; http://lietu.net/</span>
+<span class=c1>#</span>
+<span class=c1># This program is free software; you can redistribute it and/or</span>
+<span class=c1># modify it under the terms of the GNU General Public License</span>
+<span class=c1># as published by the Free Software Foundation; either version 2</span>
+<span class=c1># of the License, or (at your option) any later version.</span>
+<span class=c1>#</span>
+<span class=c1># This program is distributed in the hope that it will be useful,</span>
+<span class=c1># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class=c1># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class=c1># GNU General Public License for more details.</span>
+<span class=c1>#</span>
+<span class=c1># For the full license text go to http://www.gnu.org/licenses/gpl-2.0.html </span>
+<span class=c1># Or write to the Free Software Foundation, Inc., 51 Franklin Street, </span>
+<span class=c1># Fifth Floor, Boston, MA  02110-1301, USA.</span>
+<span class=c1>#</span>
+
+<span class=c1>#</span>
+<span class=c1># Configuration (probably no need to touch this)</span>
+<span class=c1>#</span>
+
+<span class=nv>PEP8</span><span class=o>=</span><span class=k>$(</span>which pep8<span class=k>)</span>               <span class=c1># Path to pep8</span>
+<span class=nv>PYFLAKES</span><span class=o>=</span><span class=k>$(</span>which pyflakes<span class=k>)</span>       <span class=c1># Path to pyflakes</span>
+<span class=nv>FIND</span><span class=o>=</span><span class=k>$(</span>which find<span class=k>)</span>               <span class=c1># Path to find</span>
+
+<span class=nv>HASH</span><span class=o>=</span><span class=k>$(</span>which md5sum<span class=k>)</span>             <span class=c1># How to calculate file hash</span>
+<span class=nv>DATE</span><span class=o>=</span><span class=s2>&#34;date &#39;+%Y-%m-%d %H:%M:%S&#39;&#34;</span> <span class=c1># Command to get timestamps</span>
+
+<span class=c1># The colors we use</span>
+<span class=nv>COLOR_FILENAME</span><span class=o>=</span><span class=s2>&#34;\\033[1;34m&#34;</span>
+<span class=nv>COLOR_ERROR</span><span class=o>=</span><span class=s2>&#34;\\033[1;31m&#34;</span>
+<span class=nv>COLOR_NORMAL</span><span class=o>=</span><span class=s2>&#34;\\033[0m&#34;</span>
+
+
+<span class=c1>#</span>
+<span class=c1># Settings (can be changed with user input)</span>
+<span class=c1>#</span>
+
+<span class=nv>SKIP_FIRST_RUN</span><span class=o>=</span><span class=s2>&#34;1&#34;</span> <span class=c1># Don&#39;t consider all files new for first run</span>
+<span class=nv>DEBUG</span><span class=o>=</span><span class=s2>&#34;0&#34;</span>          <span class=c1># Enable debug messages</span>
+<span class=nv>VERBOSE</span><span class=o>=</span><span class=s2>&#34;0&#34;</span>        <span class=c1># Enable verbose mode</span>
+<span class=nv>DIR</span><span class=o>=</span><span class=s2>&#34;&#34;</span>             <span class=c1># Path to monitor</span>
+
+
+<span class=c1>#</span>
+<span class=c1># Show script usage and exit</span>
+<span class=c1>#</span>
+
+<span class=k>function</span> usage <span class=o>{</span>
+	<span class=nb>echo</span> <span class=s2>&#34;Usage: </span><span class=si>${</span><span class=nv>0</span><span class=si>}</span><span class=s2> [--init] [--verbose] [--debug] [path]
+</span><span class=s2>
+</span><span class=s2>Checks python files in the folder quality and monitors changes.
+</span><span class=s2>
+</span><span class=s2>Arguments:
+</span><span class=s2>  --init    Check all files for errors during the first iteration
+</span><span class=s2>  --debug   Output much more information on what the script does
+</span><span class=s2>  --verbose Show filenames for which changes are detected
+</span><span class=s2>  --help    Show this message and exit
+</span><span class=s2>  path      The path to monitor, defaults to working directory
+</span><span class=s2>&#34;</span>
+	<span class=nb>exit</span> <span class=m>1</span>
+<span class=o>}</span>
+
+
+<span class=c1>#</span>
+<span class=c1># Parse arguments</span>
+<span class=c1>#</span>
+
+<span class=k>for</span> arg in <span class=nv>$@</span><span class=p>;</span> <span class=k>do</span>
+	<span class=k>case</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>arg</span><span class=si>}</span><span class=s2>&#34;</span> in
+		<span class=s2>&#34;--init&#34;</span><span class=o>)</span>
+			<span class=nv>SKIP_FIRST_RUN</span><span class=o>=</span><span class=s2>&#34;0&#34;</span>
+			<span class=p>;;</span>
+
+		<span class=s2>&#34;--debug&#34;</span><span class=o>)</span>
+			<span class=nv>DEBUG</span><span class=o>=</span><span class=s2>&#34;1&#34;</span>
+			<span class=p>;;</span>
+
+		<span class=s2>&#34;--verbose&#34;</span><span class=o>)</span>
+			<span class=nv>VERBOSE</span><span class=o>=</span><span class=s2>&#34;1&#34;</span>
+			<span class=p>;;</span>
+
+		<span class=s2>&#34;--help&#34;</span><span class=o>)</span>
+			usage
+			<span class=p>;;</span>
+
+		*<span class=o>)</span>
+			<span class=c1># If no path found in arguments yet and looks like a path</span>
+			<span class=k>if</span> <span class=o>[</span> -z <span class=s2>&#34;</span><span class=si>${</span><span class=nv>DIR</span><span class=si>}</span><span class=s2>&#34;</span> <span class=o>]</span> <span class=o>&amp;&amp;</span> <span class=o>[</span> -d <span class=s2>&#34;</span><span class=si>${</span><span class=nv>arg</span><span class=si>}</span><span class=s2>&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+				<span class=c1># Use path for monitoring</span>
+				<span class=nv>DIR</span><span class=o>=</span><span class=k>$(</span>readlink -f -- <span class=s2>&#34;</span><span class=si>${</span><span class=nv>arg</span><span class=si>}</span><span class=s2>&#34;</span><span class=k>)</span><span class=s2>&#34;/&#34;</span>
+			<span class=k>else</span>
+				<span class=c1># Unknown argument, show usage and exit</span>
+				usage
+			<span class=k>fi</span>
+			<span class=p>;;</span>
+	<span class=k>esac</span>
+<span class=k>done</span>
+
+
+<span class=c1>#</span>
+<span class=c1># Last checks and initializations</span>
+<span class=c1>#</span>
+
+<span class=c1># If no path defined in arguments</span>
+<span class=k>if</span> <span class=o>[</span> -z <span class=s2>&#34;</span><span class=si>${</span><span class=nv>DIR</span><span class=si>}</span><span class=s2>&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+	<span class=c1># Monitor current directory</span>
+	<span class=nv>DIR</span><span class=o>=</span><span class=k>$(</span>readlink -f -- <span class=k>$(</span><span class=nb>pwd</span><span class=k>))</span><span class=s2>&#34;/&#34;</span>
+<span class=k>fi</span>
+
+<span class=c1># Make sure the tools we need are available</span>
+<span class=nv>error</span><span class=o>=</span><span class=m>0</span>
+<span class=k>if</span> <span class=o>[</span> -z <span class=s2>&#34;</span><span class=si>${</span><span class=nv>PEP8</span><span class=si>}</span><span class=s2>&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+	<span class=nb>echo</span> <span class=s2>&#34;Can&#39;t find pep8, try: pip install pep8&#34;</span>
+	<span class=nv>error</span><span class=o>=</span><span class=m>1</span>
+<span class=k>fi</span>
+<span class=k>if</span> <span class=o>[</span> -z <span class=s2>&#34;</span><span class=si>${</span><span class=nv>PYFLAKES</span><span class=si>}</span><span class=s2>&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+	<span class=nb>echo</span> <span class=s2>&#34;Can&#39;t find pyflakes, try: pip install pyflakes&#34;</span>
+	<span class=nv>error</span><span class=o>=</span><span class=m>1</span>
+<span class=k>fi</span>
+
+<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>error</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;1a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+	<span class=nb>echo</span> <span class=s2>&#34;Errors detected, fix them and try again.&#34;</span>
+	<span class=nb>exit</span> <span class=m>1</span>
+<span class=k>fi</span>
+
+<span class=c1># Shorter variables for common use</span>
+<span class=nv>f</span><span class=o>=</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>COLOR_FILENAME</span><span class=si>}</span><span class=s2>&#34;</span>
+<span class=nv>e</span><span class=o>=</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>COLOR_ERROR</span><span class=si>}</span><span class=s2>&#34;</span>
+<span class=nv>n</span><span class=o>=</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>COLOR_NORMAL</span><span class=si>}</span><span class=s2>&#34;</span>
+
+<span class=c1># Initialize variables we&#39;ll use later</span>
+<span class=nb>declare</span> -A old_files
+<span class=nb>declare</span> -A new_files
+<span class=nv>dir_length</span><span class=o>=</span><span class=s2>&#34;</span><span class=si>${#</span><span class=nv>DIR</span><span class=si>}</span><span class=s2>&#34;</span>
+<span class=nv>first_run</span><span class=o>=</span><span class=m>1</span>
+
+<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>DEBUG</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;1a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+	<span class=nb>echo</span> <span class=k>$(</span><span class=nb>eval</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>DATE</span><span class=si>}</span><span class=s2>&#34;</span><span class=k>)</span> <span class=s2>&#34;Monitoring </span><span class=si>${</span><span class=nv>DIR</span><span class=si>}</span><span class=s2>&#34;</span>
+<span class=k>fi</span>
+
+
+<span class=c1>#</span>
+<span class=c1># Main loop</span>
+<span class=c1>#</span>
+
+<span class=k>while</span> <span class=o>[[</span> <span class=nb>true</span> <span class=o>]]</span><span class=p>;</span> <span class=k>do</span>
+
+	<span class=c1># Were checks run in this iteration?</span>
+	<span class=nv>checks_run</span><span class=o>=</span><span class=s2>&#34;0&#34;</span>
+	<span class=c1># Were errors found in this iteration</span>
+	<span class=nv>found_errors</span><span class=o>=</span><span class=s2>&#34;0&#34;</span>
+
+	<span class=c1># Find files in monitor path and loop through them file by file</span>
+	<span class=k>while</span> <span class=nv>IFS</span><span class=o>=</span> <span class=nb>read</span> -r -u3 -d <span class=s1>$&#39;\\0&#39;</span> file<span class=p>;</span> <span class=k>do</span>
+
+		<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>DEBUG</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;1a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+			<span class=nb>echo</span> <span class=k>$(</span><span class=nb>eval</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>DATE</span><span class=si>}</span><span class=s2>&#34;</span><span class=k>)</span> <span class=s2>&#34;Checking if </span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=s2> has changed&#34;</span>
+		<span class=k>fi</span>
+
+		<span class=c1># Human readable filename (strip path)</span>
+		<span class=nv>human_file</span><span class=o>=</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>file</span><span class=p>:</span><span class=si>${</span><span class=nv>dir_length</span><span class=si>}}</span><span class=s2>&#34;</span>
+
+		<span class=c1># Calculate checksum for file, save to new_files</span>
+		<span class=nv>new_checksum</span><span class=o>=</span><span class=k>$(</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>HASH</span><span class=si>}</span><span class=s2>&#34;</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=s2>&#34;</span> <span class=p>|</span> cut -d<span class=s1>&#39; &#39;</span> -f1<span class=k>)</span>
+		new_files<span class=o>[</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=s2>&#34;</span><span class=o>]=</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>new_checksum</span><span class=si>}</span><span class=s2>&#34;</span>
+
+		<span class=c1># Check if checksum from previous round exists</span>
+		<span class=nv>check</span><span class=o>=</span><span class=s2>&#34;0&#34;</span>
+		<span class=nv>old_checksum</span><span class=o>=</span><span class=s2>&#34;&#34;</span>
+		<span class=k>if</span> <span class=nb>test</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>old_files</span><span class=p>[</span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=p>]+isset</span><span class=si>}</span><span class=s2>&#34;</span><span class=p>;</span> <span class=k>then</span>
+			<span class=nv>old_checksum</span><span class=o>=</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>old_files</span><span class=p>[</span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=p>]</span><span class=si>}</span><span class=s2>&#34;</span>
+		<span class=k>else</span>
+			<span class=nv>old_checksum</span><span class=o>=</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>new_checksum</span><span class=si>}</span><span class=s2>&#34;</span>
+
+			<span class=c1># Only check new files if not first run</span>
+			<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>first_run</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;0a&#34;</span> <span class=o>]</span> <span class=o>||</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>SKIP_FIRST_RUN</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;0a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+				<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>VERBOSE</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;1a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+					<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>check</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;0a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+						<span class=nb>echo</span>
+					<span class=k>fi</span>
+
+					<span class=nb>echo</span>
+					<span class=nb>echo</span> -e <span class=k>$(</span><span class=nb>eval</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>DATE</span><span class=si>}</span><span class=s2>&#34;</span><span class=k>)</span> <span class=s2>&#34;New file: </span><span class=si>${</span><span class=nv>f</span><span class=si>}${</span><span class=nv>human_file</span><span class=si>}${</span><span class=nv>n</span><span class=si>}</span><span class=s2>&#34;</span>
+				<span class=k>fi</span>
+				<span class=nv>check</span><span class=o>=</span><span class=m>1</span>
+			<span class=k>fi</span>
+		<span class=k>fi</span>
+
+		<span class=c1># Check if checksum from previous round matches</span>
+		<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>new_checksum</span><span class=si>}</span><span class=s2>a&#34;</span> !<span class=o>=</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>old_checksum</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+			<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>VERBOSE</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;1a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+				<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>check</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;0a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+					<span class=nb>echo</span>
+				<span class=k>fi</span>
+
+				<span class=nb>echo</span>
+				<span class=nb>echo</span> -e <span class=k>$(</span><span class=nb>eval</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>DATE</span><span class=si>}</span><span class=s2>&#34;</span><span class=k>)</span> <span class=s2>&#34;File changed: </span><span class=si>${</span><span class=nv>f</span><span class=si>}${</span><span class=nv>human_file</span><span class=si>}${</span><span class=nv>n</span><span class=si>}</span><span class=s2>&#34;</span>
+			<span class=k>fi</span>
+			<span class=nv>check</span><span class=o>=</span><span class=m>1</span>
+		<span class=k>fi</span>
+
+		<span class=c1># If we need to run any checks</span>
+		<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>check</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;1a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+			<span class=nv>checks_run</span><span class=o>=</span><span class=s2>&#34;1&#34;</span>
+
+			<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>DEBUG</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;1a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+				<span class=nb>echo</span> -e <span class=k>$(</span><span class=nb>eval</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>DATE</span><span class=si>}</span><span class=s2>&#34;</span><span class=k>)</span> <span class=s2>&#34;Checking file: </span><span class=si>${</span><span class=nv>f</span><span class=si>}${</span><span class=nv>human_file</span><span class=si>}${</span><span class=nv>n</span><span class=si>}</span><span class=s2>&#34;</span>
+			<span class=k>fi</span>
+
+			<span class=nv>output</span><span class=o>=</span><span class=k>$(</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>PEP8</span><span class=si>}</span><span class=s2>&#34;</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=s2>&#34;</span><span class=k>)</span>
+			<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=p>?</span><span class=si>}</span><span class=s2>a&#34;</span> !<span class=o>=</span> <span class=s2>&#34;0a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+				<span class=nv>found_errors</span><span class=o>=</span><span class=m>1</span>
+				<span class=nb>echo</span>
+				<span class=nb>echo</span>
+				<span class=c1># Format output filenames to human readable format</span>
+				<span class=nb>echo</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>output</span><span class=p>//</span><span class=nv>$file</span><span class=p>/</span><span class=nv>$human_file</span><span class=si>}</span><span class=s2>&#34;</span>
+			<span class=k>fi</span>
+			
+			<span class=nv>output</span><span class=o>=</span><span class=k>$(</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>PYFLAKES</span><span class=si>}</span><span class=s2>&#34;</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=s2>&#34;</span><span class=k>)</span>
+			<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=p>?</span><span class=si>}</span><span class=s2>a&#34;</span> !<span class=o>=</span> <span class=s2>&#34;0a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+				<span class=nv>found_errors</span><span class=o>=</span><span class=m>1</span>
+				<span class=nb>echo</span>
+				<span class=nb>echo</span>
+				<span class=c1># Format output filenames to human readable format</span>
+				<span class=nb>echo</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>output</span><span class=p>//</span><span class=nv>$file</span><span class=p>/</span><span class=nv>$human_file</span><span class=si>}</span><span class=s2>&#34;</span>
+			<span class=k>fi</span>
+
+		<span class=k>fi</span>
+
+		<span class=c1># Save checksum</span>
+		old_files<span class=o>[</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>file</span><span class=si>}</span><span class=s2>&#34;</span><span class=o>]=</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>new_checksum</span><span class=si>}</span><span class=s2>&#34;</span>
+
+	<span class=c1># Input find -print0 results into the loop via</span>
+	<span class=c1># descriptor 3 (not stdout or stderr)</span>
+	<span class=k>done</span> 3&lt; &lt;<span class=o>(</span><span class=s2>&#34;</span><span class=si>${</span><span class=nv>FIND</span><span class=si>}</span><span class=s2>&#34;</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>DIR</span><span class=si>}</span><span class=s2>&#34;</span> -type f -name <span class=s2>&#34;*.py&#34;</span> -print0<span class=o>)</span>
+
+
+	<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>found_errors</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;1a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+		<span class=nb>echo</span>
+		<span class=nb>echo</span>
+		<span class=nb>echo</span> -e <span class=s2>&#34;</span><span class=si>${</span><span class=nv>e</span><span class=si>}</span><span class=s2>Errors found!</span><span class=si>${</span><span class=nv>n</span><span class=si>}</span><span class=s2>&#34;</span>
+		<span class=nb>echo</span>
+		<span class=nb>echo</span> <span class=s2>&#34;Naughty naughty boy! Now go fix your mess.&#34;</span>
+		<span class=nb>echo</span>
+
+		sleep <span class=m>10</span>
+	<span class=k>else</span>
+
+		<span class=c1># Slightly different output when change was detected without any errors</span>
+		<span class=k>if</span> <span class=o>[</span> <span class=s2>&#34;</span><span class=si>${</span><span class=nv>checks_run</span><span class=si>}</span><span class=s2>a&#34;</span> <span class=o>==</span> <span class=s2>&#34;1a&#34;</span> <span class=o>]</span><span class=p>;</span> <span class=k>then</span>
+			<span class=nb>echo</span> -n <span class=s2>&#34;,&#34;</span>
+		<span class=k>else</span>
+			<span class=nb>echo</span> -n <span class=s2>&#34;.&#34;</span>
+		<span class=k>fi</span>
+		sleep <span class=m>1</span>
+
+	<span class=k>fi</span>
+
+	<span class=nv>first_run</span><span class=o>=</span><span class=m>0</span>
+<span class=k>done</span></code></pre></div><h4>Usage</h4><code>pyquality [--init] [--verbose] [--debug] [path]</code><p>Or...</p><code>pyquality --help</code><h4>Issues?</h4><p>Make sure you have installed pep8 and pyflakes before trying to run this tool. Run "pip install pep8 pyflakes", as root if not in a virtualenv. If you don't have "pip", you might have to install a package called python-setuptools or just figure out how to get it.</p></div></div></div></main><footer class=footer><div class=footer-container><div class=footer-line>Powered by <a href=https://gohugo.io/ target=_blank rel="noopener noreffer" title="Hugo 0.83.1">Hugo</a> | Theme - <a href="https://ublogger.netlify.app/?utm_source=https://lietu.net/&utm_medium=footer&utm_campaign=config&utm_term=2.0.1" target=_blank title="uBlogger 2.0.1">uBlogger</a></div><div class=footer-line><i class="svg-icon icon-copyright"></i><span>2021</span></div></div></footer></div><aside id=fixed-buttons><a href=# id=back-to-top class=fixed-button title="Back to Top"><i class="svg-icon icon-arrow-up"></i>
+</a><a href=# id=view-comments class=fixed-button title="View Comments"><i class="svg-icon icon-comments-fixed"></i></a></aside><script src=/lib/smooth-scroll/smooth-scroll.min.js></script><script src=/lib/clipboard/clipboard.min.js></script><script>window.config={code:{copyTitle:"Copy to clipboard",maxShownLines:10},comment:{}}</script><script src=/js/theme.min.js></script></body></html>
