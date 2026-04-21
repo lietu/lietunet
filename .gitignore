@@ -1,15 +1,30 @@
-# Hugo default output directory
-/public
+node_modules
 
-## OS Files
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
 
-# OSX
+# OS
 .DS_Store
+Thumbs.db
 
-# IDEs
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# JetBrains
 .idea
+.python-version
+
+.svelte-kit
+build

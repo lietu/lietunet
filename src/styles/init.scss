@@ -1,0 +1,22 @@
+@use "@picocss/pico";
+
+* {
+  font-family: 'Merriweather Sans', system-ui !important;
+}
+
+em {
+  font-weight: 900;
+  text-decoration:  underline;
+}
+
+@keyframes bye {
+  0% {
+    transform: rotate(-35deg);
+  }
+  50% {
+    transform: rotate(85deg);
+  }
+  100% {
+    transform: rotate(-35deg);
+  }
+}

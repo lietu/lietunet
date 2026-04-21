@@ -1,0 +1,54 @@
+name: Build and release to GH Pages
+
+on:
+  push:
+    branches:
+      - "master"
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.10
+
+      - name: Prepare things
+        id: prepare
+        run: |
+          bun install
+
+      - name: Build
+        run: |
+          bun run build
+
+      - name: Deploy to GitHub Pages
+        if: success()
+        run: |
+          git config --global user.name "GitHub"
+          git config --global user.email "<noreply@github.com>"
+
+          SRC="$(pwd)"
+
+          mkdir /tmp/github-pages
+          cp CNAME /tmp/github-pages
+          cd /tmp/github-pages
+
+          touch .nojekyll
+
+          git init . && git checkout --orphan "${BRANCH}"
+          cp -r "${SRC}/${DEPLOY_DIR}"/* .
+
+          git add . && git status && git commit --message "${MESSAGE}"
+          git push -f -q "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "${BRANCH}"
+        env:
+          DEPLOY_DIR: build
+          MESSAGE: Deploy to GitHub Pages
+          BRANCH: gh-pages
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
