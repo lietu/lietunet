@@ -9,15 +9,15 @@
 
 <svelte:head>
   <!-- Primary Meta Tags -->
-  <title>Lietu.net</title>
-  <meta name="title" content="Lietu.net" />
-  <meta name="description" content='Lietu.net' />
+  <title>Goodbye world | Janne Kalevi Enberg</title>
+  <meta name="title" content="Goodbye world | Janne Kalevi Enberg" />
+  <meta name="description" content='The anti-"Hello World" for Janne Kalevi Enberg. Thanks Pirkka Tapio Frosti and pals for destroying my life!' />
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://lietu.net/" />
-  <meta property="og:title" content="Lietu.net" />
-  <meta property="og:description" content='Lietu.net' />
+  <meta property="og:title" content="Goodbye world | Janne Kalevi Enberg" />
+  <meta property="og:description" content='The anti-"Hello World" for Janne Kalevi Enberg. Thanks Pirkka Tapio Frosti and pals for destroying my life!' />
 </svelte:head>
 
 <main>
